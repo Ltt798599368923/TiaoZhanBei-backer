@@ -5,7 +5,7 @@ COPY . .
 RUN mvn clean package -DskipTests
 
 # 运行阶段：用轻量级 JDK 运行 jar 包
-FROM openjdk:17-jdk-alpine
+FROM eclipse-temurin:17-jdk-alpine
 ARG PORT=8080
 ENV PORT=${PORT}
 COPY --from=build /app/target/*.jar /app/app.jar
