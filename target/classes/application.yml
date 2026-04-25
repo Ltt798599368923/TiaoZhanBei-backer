@@ -8,9 +8,8 @@ spring:
 deepseek:
   api:
     key: sk-8d7758bc0a124eb9a252bd0d48015eb9
-    url: https://gpt-api-free-kucn.onrender.com/v1/chat/completions
+    url: https://api.deepseek.com/v1/chat/completions
     model: deepseek-chat
-    endpoint: /api/ai/chat
 
 logging:
   level:
