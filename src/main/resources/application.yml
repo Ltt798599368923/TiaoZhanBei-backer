@@ -5,9 +5,9 @@ spring:
   application:
     name: tiaozhanbei-law-backend
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/tiaozhanbei}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:tiaozhanbei}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
