@@ -16,6 +16,14 @@ services:
         fromDatabase:
           name: tiaozhanbei-db
           property: connectionString
+      - key: DB_USERNAME
+        fromDatabase:
+          name: tiaozhanbei-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: tiaozhanbei-db
+          property: password
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: JPA_DDL

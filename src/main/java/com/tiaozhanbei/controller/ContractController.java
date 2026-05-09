@@ -7,11 +7,18 @@ import com.tiaozhanbei.service.ContractService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/contract")
@@ -19,6 +26,9 @@ public class ContractController {
     private static final Logger logger = LoggerFactory.getLogger(ContractController.class);
 
     private final ContractService contractService;
+
+    @Value("${file.upload.dir:./uploads}")
+    private String uploadDir;
 
     @Autowired
     public ContractController(ContractService contractService) {
@@ -63,6 +73,59 @@ public class ContractController {
 
             Contract contract = contractService.createContract(userId, request);
             return ApiResponse.success("提交成功", contract);
+        } catch (Exception e) {
+            logger.error("Create contract failed", e);
+            return ApiResponse.error("提交合同审查失败: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/upload/{userId}")
+    public ApiResponse<Contract> uploadContract(
+            @PathVariable Long userId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("type") String type,
+            @RequestParam("title") String title) {
+        logger.info("Uploading contract for user: {}, type: {}, fileName: {}", userId, type, file.getOriginalFilename());
+        try {
+            if (type == null || title == null || title.trim().isEmpty()) {
+                return ApiResponse.error("合同类型和标题不能为空");
+            }
+
+            if (file.isEmpty()) {
+                return ApiResponse.error("请选择要上传的文件");
+            }
+
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || originalFilename.isEmpty()) {
+                originalFilename = "contract_" + System.currentTimeMillis();
+            }
+
+            String extension = "";
+            int dotIndex = originalFilename.lastIndexOf('.');
+            if (dotIndex > 0) {
+                extension = originalFilename.substring(dotIndex);
+            }
+
+            String storedFilename = UUID.randomUUID().toString() + extension;
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            Path destPath = uploadPath.resolve(storedFilename);
+            file.transferTo(destPath.toFile());
+
+            ContractRequest request = new ContractRequest();
+            request.setType(type);
+            request.setTitle(title);
+            request.setFileName(originalFilename);
+            request.setFilePath(destPath.toString());
+
+            Contract contract = contractService.createContract(userId, request);
+            return ApiResponse.success("上传成功", contract);
+        } catch (IOException e) {
+            logger.error("File upload failed", e);
+            return ApiResponse.error("文件上传失败: " + e.getMessage());
         } catch (Exception e) {
             logger.error("Create contract failed", e);
             return ApiResponse.error("提交合同审查失败: " + e.getMessage());

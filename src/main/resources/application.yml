@@ -5,9 +5,9 @@ spring:
   application:
     name: tiaozhanbei-law-backend
   datasource:
-    url: ${JDBC_DATABASE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:tiaozhanbei}?sslmode=${PGSSLMODE:require}}
-    username: ${DB_USERNAME:${PGUSER:postgres}}
-    password: ${DB_PASSWORD:${PGPASSWORD:postgres}}
+    url: jdbc:${DATABASE_URL:postgresql://localhost:5432/tiaozhanbei}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -17,12 +17,20 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 deepseek:
   api:
     key: ${DEEPSEEK_API_KEY:sk-8d7758bc0a124eb9a252bd0d48015eb9}
     url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
     model: ${DEEPSEEK_MODEL:deepseek-chat}
+
+file:
+  upload:
+    dir: ${FILE_UPLOAD_DIR:./uploads}
 
 logging:
   level:

@@ -22,6 +22,12 @@ public class Consultation {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(length = 20)
+    private String phone;
+
+    @Column(length = 50)
+    private String type;
+
     @Column(length = 50)
     private String status;
 
@@ -86,6 +92,22 @@ public class Consultation {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public String getStatus() {

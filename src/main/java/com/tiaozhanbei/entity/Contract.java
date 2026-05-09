@@ -26,6 +26,9 @@ public class Contract {
     private String fileName;
 
     @Column(columnDefinition = "TEXT")
+    private String content;
+
+    @Column(columnDefinition = "TEXT")
     private String reviewResult;
 
     @Column(length = 50)
@@ -100,6 +103,14 @@ public class Contract {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public String getReviewResult() {

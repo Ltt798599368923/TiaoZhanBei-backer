@@ -35,6 +35,8 @@ public class ConsultationService {
             map.put("id", cons.getId());
             map.put("title", cons.getTitle());
             map.put("content", cons.getContent());
+            map.put("phone", cons.getPhone());
+            map.put("type", cons.getType());
             map.put("status", cons.getStatus());
             map.put("time", cons.getCreatedTime().format(DATE_FORMATTER));
             return map;
@@ -48,6 +50,8 @@ public class ConsultationService {
         consultation.setUserId(userId);
         consultation.setTitle(request.getTitle());
         consultation.setContent(request.getContent());
+        consultation.setPhone(request.getPhone());
+        consultation.setType(request.getType());
         consultation.setStatus("pending");
 
         return consultationRepository.save(consultation);
