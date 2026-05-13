@@ -25,6 +25,7 @@ public class AdminController {
     @Autowired private ContractRepository contractRepository;
     @Autowired private DocumentTemplateRepository documentTemplateRepository;
     @Autowired private FavoriteRepository favoriteRepository;
+    @Autowired private SystemNoticeRepository systemNoticeRepository;
 
     private boolean checkAuth(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
         return adminToken != null && adminToken.equals(token);
