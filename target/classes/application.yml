@@ -24,7 +24,7 @@ spring:
 
 deepseek:
   api:
-    key: ${DEEPSEEK_API_KEY:sk-8d7758bc0a124eb9a252bd0d48015eb9}
+    key: ${DEEPSEEK_API_KEY:}
     url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
     model: ${DEEPSEEK_MODEL:deepseek-chat}
 

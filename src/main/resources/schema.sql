@@ -44,12 +44,13 @@ CREATE TABLE IF NOT EXISTS t_consultation (
     lawyer_id BIGINT,
     title VARCHAR(200) NOT NULL,
     content TEXT,
+    phone VARCHAR(20),
+    type VARCHAR(50),
     status VARCHAR(50),
     created_time TIMESTAMP,
     updated_time TIMESTAMP,
     is_deleted BOOLEAN DEFAULT FALSE
 );
-
 -- =============================================
 -- 4. 合同表
 -- =============================================
@@ -60,6 +61,7 @@ CREATE TABLE IF NOT EXISTS t_contract (
     title VARCHAR(200) NOT NULL,
     file_path VARCHAR(500),
     file_name VARCHAR(500),
+    content TEXT,
     review_result TEXT,
     status VARCHAR(50),
     created_time TIMESTAMP,
