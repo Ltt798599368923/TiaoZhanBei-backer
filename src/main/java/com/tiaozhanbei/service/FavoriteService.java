@@ -34,7 +34,7 @@ public class FavoriteService {
             Map<String, Object> map = new HashMap<>();
             map.put("id", fav.getId());
             map.put("title", fav.getTitle());
-            map.put("desc", fav.getDescription());
+            map.put("description", fav.getDescription());
             map.put("time", fav.getCreatedTime().format(DATE_FORMATTER));
             map.put("icon", fav.getIcon());
             return map;

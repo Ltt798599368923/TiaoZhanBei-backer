@@ -64,7 +64,8 @@ public class DocumentTemplateService {
     public DocumentTemplate incrementDownloadCount(Long templateId) {
         DocumentTemplate template = documentTemplateRepository.findById(templateId).orElse(null);
         if (template != null && !template.getIsDeleted()) {
-            template.setDownloadCount(template.getDownloadCount() + 1);
+            int currentCount = template.getDownloadCount() == null ? 0 : template.getDownloadCount();
+            template.setDownloadCount(currentCount + 1);
             return documentTemplateRepository.save(template);
         }
         return null;

@@ -22,6 +22,13 @@ public class SystemNotice {
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdTime == null) {
+            createdTime = LocalDateTime.now();
+        }
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getTitle() { return title; }
