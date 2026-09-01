@@ -6,7 +6,9 @@ The backend requires Java 17 and PostgreSQL.
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string without the leading `jdbc:` prefix. |
+| `DB_HOST` | PostgreSQL host name. |
+| `DB_PORT` | PostgreSQL port, typically `5432`. |
+| `DB_NAME` | PostgreSQL database name. |
 | `DB_USERNAME` | PostgreSQL user name. |
 | `DB_PASSWORD` | PostgreSQL password. |
 | `DEEPSEEK_API_KEY` | DeepSeek API key for chat and legal search. |

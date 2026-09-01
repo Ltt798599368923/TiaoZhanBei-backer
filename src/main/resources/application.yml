@@ -5,7 +5,7 @@ spring:
   application:
     name: tiaozhanbei-law-backend
   datasource:
-    url: jdbc:${DATABASE_URL:postgresql://localhost:5432/tiaozhanbei}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:tiaozhanbei}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver

@@ -12,10 +12,18 @@ services:
     envVars:
       - key: PORT
         value: 10000
-      - key: DATABASE_URL
+      - key: DB_HOST
         fromDatabase:
           name: tiaozhanbei-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: tiaozhanbei-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: tiaozhanbei-db
+          property: database
       - key: DB_USERNAME
         fromDatabase:
           name: tiaozhanbei-db
