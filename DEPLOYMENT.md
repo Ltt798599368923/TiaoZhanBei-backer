@@ -11,6 +11,7 @@ The backend requires Java 17 and PostgreSQL.
 | `DB_NAME` | PostgreSQL database name. |
 | `DB_USERNAME` | PostgreSQL user name. |
 | `DB_PASSWORD` | PostgreSQL password. |
+| `DATABASE_URL` | Optional Render PostgreSQL connection string; the application supports Render's full URL format. |
 | `DEEPSEEK_API_KEY` | DeepSeek API key for chat and legal search. |
 | `ADMIN_TOKEN` | A strong, private token for `/api/admin` operations. |
 | `WECHAT_LOGIN_ENABLED` | Set to `true` for real Mini Program login. |
