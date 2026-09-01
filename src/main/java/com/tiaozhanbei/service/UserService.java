@@ -10,23 +10,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.UUID;
-
 @Service
 public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
+    private final WeChatLoginService weChatLoginService;
+    private final UserSessionService userSessionService;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, WeChatLoginService weChatLoginService,
+                       UserSessionService userSessionService) {
         this.userRepository = userRepository;
+        this.weChatLoginService = weChatLoginService;
+        this.userSessionService = userSessionService;
     }
 
     public LoginResponse login(LoginRequest request) {
-        logger.info("User login attempt, code: {}", request.getCode());
+        logger.info("User login attempt");
 
-        String openId = "mock_openid_" + UUID.randomUUID().toString().substring(0, 8);
+        String openId = weChatLoginService.resolveOpenId(request.getCode(), request.getNickname());
 
         Optional<User> existingUser = userRepository.findByOpenId(openId);
         User user;
@@ -50,7 +53,7 @@ public class UserService {
             user = userRepository.save(user);
         }
 
-        String token = generateToken(user);
+        String token = userSessionService.createSession(user);
         LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo(
                 user.getId(),
                 user.getNickname(),
@@ -84,9 +87,5 @@ public class UserService {
         }
 
         return userRepository.save(user);
-    }
-
-    private String generateToken(User user) {
-        return "token_" + user.getId() + "_" + UUID.randomUUID().toString();
     }
 }

@@ -28,6 +28,17 @@ deepseek:
     url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
     model: ${DEEPSEEK_MODEL:deepseek-chat}
 
+wechat:
+  login-enabled: ${WECHAT_LOGIN_ENABLED:false}
+  app-id: ${WECHAT_APP_ID:}
+  app-secret: ${WECHAT_APP_SECRET:}
+
+admin:
+  token: ${ADMIN_TOKEN:}
+
+security:
+  user-session-ttl-hours: ${USER_SESSION_TTL_HOURS:168}
+
 file:
   upload:
     dir: ${FILE_UPLOAD_DIR:./uploads}

@@ -10,4 +10,7 @@ import java.util.List;
 public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
     List<Consultation> findByUserIdAndIsDeletedFalseOrderByCreatedTimeDesc(Long userId);
     List<Consultation> findByStatusAndIsDeletedFalseOrderByCreatedTimeDesc(String status);
+    List<Consultation> findByIsDeletedFalseOrderByCreatedTimeDesc();
+    long countByIsDeletedFalse();
+    long countByStatusAndIsDeletedFalse(String status);
 }

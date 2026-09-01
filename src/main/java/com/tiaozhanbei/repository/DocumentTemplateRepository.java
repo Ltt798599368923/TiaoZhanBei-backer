@@ -10,4 +10,6 @@ import java.util.List;
 public interface DocumentTemplateRepository extends JpaRepository<DocumentTemplate, Long> {
     List<DocumentTemplate> findByIsDeletedFalseOrderByCreatedTimeDesc();
     List<DocumentTemplate> findByCategoryAndIsDeletedFalseOrderByCreatedTimeDesc(String category);
+    List<DocumentTemplate> findByIsDeletedFalse();
+    long countByIsDeletedFalse();
 }

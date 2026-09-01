@@ -10,4 +10,8 @@ import java.util.List;
 public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Contract> findByUserIdAndIsDeletedFalseOrderByCreatedTimeDesc(Long userId);
     List<Contract> findByUserIdAndTypeAndIsDeletedFalseOrderByCreatedTimeDesc(Long userId, String type);
+    List<Contract> findByStatusAndIsDeletedFalseOrderByCreatedTimeDesc(String status);
+    List<Contract> findByIsDeletedFalseOrderByCreatedTimeDesc();
+    long countByIsDeletedFalse();
+    long countByStatusAndIsDeletedFalse(String status);
 }

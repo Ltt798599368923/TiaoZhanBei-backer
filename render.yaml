@@ -26,6 +26,14 @@ services:
           property: password
       - key: DEEPSEEK_API_KEY
         sync: false
+      - key: WECHAT_LOGIN_ENABLED
+        value: false
+      - key: WECHAT_APP_ID
+        sync: false
+      - key: WECHAT_APP_SECRET
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
       - key: JPA_DDL
         value: update
 

@@ -28,7 +28,7 @@ public class AdminController {
     @Autowired private SystemNoticeRepository systemNoticeRepository;
 
     private boolean checkAuth(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
-        return adminToken != null && adminToken.equals(token);
+        return adminToken != null && !adminToken.trim().isEmpty() && adminToken.equals(token);
     }
 
     private <T> ApiResponse<T> authError() {
@@ -39,7 +39,7 @@ public class AdminController {
     @PostMapping("/login")
     public ApiResponse<Map<String, String>> login(@RequestBody Map<String, String> body) {
         String pwd = body.getOrDefault("password", "");
-        if (adminToken.equals(pwd)) {
+        if (checkAuth(pwd)) {
             Map<String, String> result = new HashMap<>();
             result.put("token", adminToken);
             return ApiResponse.success("登录成功", result);

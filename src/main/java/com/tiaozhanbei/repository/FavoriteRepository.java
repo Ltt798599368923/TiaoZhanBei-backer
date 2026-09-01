@@ -10,4 +10,5 @@ import java.util.List;
 public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     List<Favorite> findByUserIdAndIsDeletedFalseOrderByCreatedTimeDesc(Long userId);
     boolean existsByUserIdAndContentIdAndContentTypeAndIsDeletedFalse(Long userId, Long contentId, String contentType);
+    long countByIsDeletedFalse();
 }
