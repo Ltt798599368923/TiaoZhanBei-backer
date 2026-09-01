@@ -1,11 +1,13 @@
+# Add this server block to the existing host Nginx configuration after the
+# API domain has been pointed at the server. Keep the existing website blocks.
 server {
     listen 80;
-    server_name _;
+    server_name api.example.com;
 
     client_max_body_size 12m;
 
     location / {
-        proxy_pass http://app:8080;
+        proxy_pass http://127.0.0.1:18080;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
