@@ -31,6 +31,12 @@ public class Consultation {
     @Column(length = 50)
     private String status;
 
+    @Column(columnDefinition = "TEXT")
+    private String reply;
+
+    @Column(name = "replied_time")
+    private LocalDateTime repliedTime;
+
     @Column(name = "created_time")
     private LocalDateTime createdTime;
 
@@ -116,6 +122,22 @@ public class Consultation {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getReply() {
+        return reply;
+    }
+
+    public void setReply(String reply) {
+        this.reply = reply;
+    }
+
+    public LocalDateTime getRepliedTime() {
+        return repliedTime;
+    }
+
+    public void setRepliedTime(LocalDateTime repliedTime) {
+        this.repliedTime = repliedTime;
     }
 
     public LocalDateTime getCreatedTime() {

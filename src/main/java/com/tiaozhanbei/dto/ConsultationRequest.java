@@ -5,6 +5,7 @@ public class ConsultationRequest {
     private String content;
     private String phone;
     private String type;
+    private Long lawyerId;
 
     public String getTitle() {
         return title;
@@ -36,5 +37,13 @@ public class ConsultationRequest {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public Long getLawyerId() {
+        return lawyerId;
+    }
+
+    public void setLawyerId(Long lawyerId) {
+        this.lawyerId = lawyerId;
     }
 }

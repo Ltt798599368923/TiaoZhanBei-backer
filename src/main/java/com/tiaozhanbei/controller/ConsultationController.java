@@ -42,7 +42,7 @@ public class ConsultationController {
             @RequestBody ConsultationRequest request) {
         logger.info("Creating consultation for user: {}", userId);
         try {
-            if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
+            if (request == null || request.getTitle() == null || request.getTitle().trim().isEmpty()) {
                 return ApiResponse.error("咨询标题不能为空");
             }
 

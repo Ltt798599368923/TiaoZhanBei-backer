@@ -17,7 +17,7 @@ import java.util.*;
 public class AdminController {
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
-    @Value("${admin.token:admin123}")
+    @Value("${admin.token:}")
     private String adminToken;
 
     @Autowired private UserRepository userRepository;
@@ -28,7 +28,7 @@ public class AdminController {
     @Autowired private SystemNoticeRepository systemNoticeRepository;
 
     private boolean checkAuth(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
-        return adminToken != null && !adminToken.trim().isEmpty() && adminToken.equals(token);
+        return adminToken != null && !adminToken.trim().isEmpty() && adminToken.trim().equals(token);
     }
 
     private <T> ApiResponse<T> authError() {
@@ -131,7 +131,10 @@ public class AdminController {
             m.put("content", c.getContent());
             m.put("phone", c.getPhone());
             m.put("type", c.getType());
+            m.put("lawyerId", c.getLawyerId());
             m.put("status", c.getStatus());
+            m.put("reply", c.getReply());
+            m.put("repliedTime", c.getRepliedTime());
             m.put("createdTime", c.getCreatedTime());
             result.add(m);
         }
@@ -144,7 +147,14 @@ public class AdminController {
         if (!checkAuth(token)) return authError();
         Consultation c = consultationRepository.findById(id).orElse(null);
         if (c == null) return ApiResponse.error("咨询不存在");
+        if (body == null) return ApiResponse.error("请求内容不能为空");
         if (body.containsKey("status")) c.setStatus(body.get("status"));
+        if (body.containsKey("reply")) {
+            String reply = body.get("reply");
+            c.setReply(reply == null ? null : reply.trim());
+            c.setRepliedTime(reply == null || reply.trim().isEmpty() ? null : LocalDateTime.now());
+            if (reply != null && !reply.trim().isEmpty() && "pending".equals(c.getStatus())) c.setStatus("replied");
+        }
         consultationRepository.save(c);
         return ApiResponse.success("操作成功", null);
     }
