@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 @Component
 public class UserAuthInterceptor implements HandlerInterceptor {
     private static final Pattern USER_SCOPED_PATH = Pattern.compile(
-            "^/api/(?:user/(?:info|update)|favorite/(?:list|add|remove)|consultation/(?:list|create|detail|delete)|contract/(?:list|create|upload|detail|delete))/(\\d+)(?:/.*)?$");
+            "^/api/(?:user/(?:info|update)|favorite/(?:list|add|remove)|consultation/(?:list|create|detail|delete)|contract/(?:list|create|upload|detail|delete|file)|notice/user)/(\\d+)(?:/.*)?$");
 
     private final UserSessionService userSessionService;
 

@@ -3,11 +3,15 @@ package com.tiaozhanbei.controller;
 import com.tiaozhanbei.dto.ApiResponse;
 import com.tiaozhanbei.entity.*;
 import com.tiaozhanbei.repository.*;
+import com.tiaozhanbei.service.FileStorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -26,6 +30,7 @@ public class AdminController {
     @Autowired private DocumentTemplateRepository documentTemplateRepository;
     @Autowired private FavoriteRepository favoriteRepository;
     @Autowired private SystemNoticeRepository systemNoticeRepository;
+    @Autowired private FileStorageService fileStorageService;
 
     private boolean checkAuth(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
         return adminToken != null && !adminToken.trim().isEmpty() && adminToken.trim().equals(token);
@@ -148,6 +153,7 @@ public class AdminController {
         Consultation c = consultationRepository.findById(id).orElse(null);
         if (c == null) return ApiResponse.error("咨询不存在");
         if (body == null) return ApiResponse.error("请求内容不能为空");
+        String previousReply = c.getReply();
         if (body.containsKey("status")) c.setStatus(body.get("status"));
         if (body.containsKey("reply")) {
             String reply = body.get("reply");
@@ -156,6 +162,9 @@ public class AdminController {
             if (reply != null && !reply.trim().isEmpty() && "pending".equals(c.getStatus())) c.setStatus("replied");
         }
         consultationRepository.save(c);
+        if (c.getReply() != null && !c.getReply().trim().isEmpty() && !c.getReply().equals(previousReply)) {
+            createUserNotice(c.getUserId(), "咨询已回复", "您的咨询《" + c.getTitle() + "》已有处理回复，请在“我的咨询”中查看详情。", "consultation_reply");
+        }
         return ApiResponse.success("操作成功", null);
     }
 
@@ -203,9 +212,13 @@ public class AdminController {
         if (!checkAuth(token)) return authError();
         Contract c = contractRepository.findById(id).orElse(null);
         if (c == null) return ApiResponse.error("合同不存在");
+        String previousReview = c.getReviewResult();
         if (body.containsKey("status")) c.setStatus(body.get("status"));
         if (body.containsKey("reviewResult")) c.setReviewResult(body.get("reviewResult"));
         contractRepository.save(c);
+        if (c.getReviewResult() != null && !c.getReviewResult().trim().isEmpty() && !c.getReviewResult().equals(previousReview)) {
+            createUserNotice(c.getUserId(), "合同审核已更新", "您的合同《" + c.getTitle() + "》已有审核结论，请在合同记录中查看详情。", "contract_review");
+        }
         return ApiResponse.success("操作成功", null);
     }
 
@@ -218,6 +231,15 @@ public class AdminController {
         c.setIsDeleted(true);
         contractRepository.save(c);
         return ApiResponse.success("删除成功", null);
+    }
+
+    @GetMapping("/contracts/{id}/file")
+    public ResponseEntity<Resource> downloadContractFile(@RequestHeader(value = "X-Admin-Token", required = false) String token,
+                                                          @PathVariable Long id) throws Exception {
+        if (!checkAuth(token)) return ResponseEntity.status(403).build();
+        Contract contract = contractRepository.findById(id).orElse(null);
+        if (contract == null || Boolean.TRUE.equals(contract.getIsDeleted())) return ResponseEntity.notFound().build();
+        return fileStorageService.download(contract.getFilePath(), contract.getFileName());
     }
 
     // ==================== 模板管理 ====================
@@ -240,6 +262,33 @@ public class AdminController {
         return ApiResponse.success("创建成功", documentTemplateRepository.save(template));
     }
 
+    @PostMapping(value = "/templates/upload", consumes = "multipart/form-data")
+    public ApiResponse<DocumentTemplate> uploadTemplate(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @RequestParam String title,
+            @RequestParam String category,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String content,
+            @RequestParam("file") MultipartFile file) {
+        if (!checkAuth(token)) return authError();
+        if (title.trim().isEmpty() || category.trim().isEmpty()) return ApiResponse.error("标题和分类不能为空");
+        try {
+            DocumentTemplate template = new DocumentTemplate();
+            template.setTitle(title.trim());
+            template.setCategory(category.trim());
+            template.setDescription(description);
+            template.setContent(content);
+            template.setFileName(file.getOriginalFilename());
+            template.setFilePath(fileStorageService.store(file, "templates"));
+            template.setDownloadCount(0);
+            template.setIsDeleted(false);
+            return ApiResponse.success("上传成功", documentTemplateRepository.save(template));
+        } catch (Exception e) {
+            logger.error("Upload template failed", e);
+            return ApiResponse.error("模板上传失败: " + e.getMessage());
+        }
+    }
+
     @PutMapping("/templates/{id}")
     public ApiResponse<DocumentTemplate> updateTemplate(
             @RequestHeader(value = "X-Admin-Token", required = false) String token,
@@ -252,6 +301,7 @@ public class AdminController {
         if (body.getCategory() != null) t.setCategory(body.getCategory());
         if (body.getContent() != null) t.setContent(body.getContent());
         if (body.getFilePath() != null) t.setFilePath(body.getFilePath());
+        if (body.getFileName() != null) t.setFileName(body.getFileName());
         return ApiResponse.success("更新成功", documentTemplateRepository.save(t));
     }
 
@@ -279,6 +329,8 @@ public class AdminController {
             m.put("id", n.getId());
             m.put("title", n.getTitle());
             m.put("content", n.getContent());
+            m.put("userId", n.getUserId());
+            m.put("noticeType", n.getNoticeType());
             m.put("createdTime", n.getCreatedTime());
             result.add(m);
         }
@@ -293,8 +345,19 @@ public class AdminController {
         SystemNotice notice = new SystemNotice();
         notice.setTitle(body.get("title"));
         notice.setContent(body.get("content"));
+        notice.setNoticeType("system");
         notice.setCreatedTime(LocalDateTime.now());
         return ApiResponse.success("发布成功", systemNoticeRepository.save(notice));
+    }
+
+    private void createUserNotice(Long userId, String title, String content, String noticeType) {
+        SystemNotice notice = new SystemNotice();
+        notice.setUserId(userId);
+        notice.setTitle(title);
+        notice.setContent(content);
+        notice.setNoticeType(noticeType);
+        notice.setCreatedTime(LocalDateTime.now());
+        systemNoticeRepository.save(notice);
     }
 
     @DeleteMapping("/notices/{id}")

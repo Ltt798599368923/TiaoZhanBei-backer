@@ -51,6 +51,6 @@ public class AIController {
 
     @GetMapping("/health")
     public ChatResponse health() {
-        return ChatResponse.success("AI 服务运行正常");
+        return deepSeekService.health();
     }
 }

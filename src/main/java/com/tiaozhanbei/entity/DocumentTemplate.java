@@ -25,6 +25,9 @@ public class DocumentTemplate {
     @Column(length = 500)
     private String filePath;
 
+    @Column(length = 500)
+    private String fileName;
+
     @Column(name = "download_count")
     private Integer downloadCount = 0;
 
@@ -85,6 +88,14 @@ public class DocumentTemplate {
 
     public void setFilePath(String filePath) {
         this.filePath = filePath;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 
     public Integer getDownloadCount() {

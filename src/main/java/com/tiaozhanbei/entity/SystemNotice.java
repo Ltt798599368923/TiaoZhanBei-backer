@@ -16,6 +16,12 @@ public class SystemNotice {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "notice_type", length = 50)
+    private String noticeType;
+
     @Column(name = "created_time")
     private LocalDateTime createdTime;
 
@@ -35,6 +41,10 @@ public class SystemNotice {
     public void setTitle(String title) { this.title = title; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+    public String getNoticeType() { return noticeType; }
+    public void setNoticeType(String noticeType) { this.noticeType = noticeType; }
     public LocalDateTime getCreatedTime() { return createdTime; }
     public void setCreatedTime(LocalDateTime createdTime) { this.createdTime = createdTime; }
     public Boolean getIsDeleted() { return isDeleted; }

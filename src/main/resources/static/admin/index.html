@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>法视界管理台</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <main class="login-shell" id="login-shell">
+    <form class="login-form" id="login-form">
+      <h1>法视界管理台</h1>
+      <p>使用服务器配置的管理员口令登录。</p>
+      <label>管理员口令<input id="admin-token" type="password" autocomplete="current-password" required></label>
+      <button type="submit">登录</button>
+      <p class="form-message" id="login-message"></p>
+    </form>
+  </main>
+
+  <main class="app-shell hidden" id="app-shell">
+    <header class="topbar">
+      <strong>法视界管理台</strong>
+      <button class="text-button" id="logout-button" type="button">退出</button>
+    </header>
+    <div class="workspace">
+      <nav class="sidebar" id="sidebar">
+        <button data-tab="dashboard" class="active">概览</button>
+        <button data-tab="consultations">咨询处理</button>
+        <button data-tab="contracts">合同审核</button>
+        <button data-tab="content">内容发布</button>
+        <button data-tab="lawyers">律师管理</button>
+        <button data-tab="templates">文书模板</button>
+        <button data-tab="notices">系统通知</button>
+      </nav>
+      <section class="content-area" id="content-area"></section>
+    </div>
+  </main>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

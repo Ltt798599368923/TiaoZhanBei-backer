@@ -44,6 +44,15 @@ public class AdminContentController {
         return ApiResponse.success(contentItemRepository.findByContentTypeAndIsDeletedFalseOrderByCreatedTimeDesc(type));
     }
 
+    @GetMapping("/content/{id}")
+    public ApiResponse<ContentItem> contentDetail(@RequestHeader(value = "X-Admin-Token", required = false) String token,
+                                                   @PathVariable Long id) {
+        if (!authorized(token)) return forbidden();
+        ContentItem item = contentItemRepository.findById(id).orElse(null);
+        if (item == null || Boolean.TRUE.equals(item.getIsDeleted())) return ApiResponse.error("内容不存在");
+        return ApiResponse.success(item);
+    }
+
     @PostMapping("/content")
     public ApiResponse<ContentItem> createContent(@RequestHeader(value = "X-Admin-Token", required = false) String token,
                                                     @RequestBody ContentItem body) {
@@ -97,6 +106,15 @@ public class AdminContentController {
     public ApiResponse<List<Lawyer>> lawyerList(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
         if (!authorized(token)) return forbidden();
         return ApiResponse.success(lawyerRepository.findByIsDeletedFalseOrderByCreatedTimeDesc());
+    }
+
+    @GetMapping("/lawyers/{id}")
+    public ApiResponse<Lawyer> lawyerDetail(@RequestHeader(value = "X-Admin-Token", required = false) String token,
+                                             @PathVariable Long id) {
+        if (!authorized(token)) return forbidden();
+        Lawyer lawyer = lawyerRepository.findById(id).orElse(null);
+        if (lawyer == null || Boolean.TRUE.equals(lawyer.getIsDeleted())) return ApiResponse.error("律师不存在");
+        return ApiResponse.success(lawyer);
     }
 
     @PostMapping("/lawyers")

@@ -35,6 +35,12 @@ public class DeepSeekService {
     }
 
     public ChatResponse chat(ChatRequest request) {
+        if (isBlank(deepSeekConfig.getKey())) {
+            return ChatResponse.error("AI 服务尚未配置");
+        }
+        if (request == null || isBlank(request.getMessage())) {
+            return ChatResponse.error("请输入咨询内容");
+        }
         try {
             JSONObject requestBody = new JSONObject();
             requestBody.put("model", deepSeekConfig.getModel());
@@ -114,5 +120,15 @@ public class DeepSeekService {
         request.setMessage(searchPrompt);
 
         return chat(request);
+    }
+
+    public ChatResponse health() {
+        return isBlank(deepSeekConfig.getKey())
+                ? ChatResponse.error("AI 服务尚未配置")
+                : ChatResponse.success("AI 服务已配置");
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

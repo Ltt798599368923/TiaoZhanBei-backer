@@ -10,9 +10,6 @@ import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -32,7 +29,7 @@ public class WeChatLoginService {
 
     public String resolveOpenId(String code, String nickname) {
         if (!weChatConfig.isLoginEnabled()) {
-            return "dev_openid_" + sha256(normalizeNickname(nickname));
+            throw new IllegalStateException("微信登录尚未启用");
         }
 
         if (isBlank(weChatConfig.getAppId()) || isBlank(weChatConfig.getAppSecret())) {
@@ -64,24 +61,8 @@ public class WeChatLoginService {
         }
     }
 
-    private String normalizeNickname(String nickname) {
-        return isBlank(nickname) ? "anonymous" : nickname.trim().toLowerCase();
-    }
-
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
 
-    private String sha256(String value) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder result = new StringBuilder();
-            for (byte item : digest) {
-                result.append(String.format("%02x", item));
-            }
-            return result.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is unavailable", e);
-        }
-    }
 }

@@ -23,6 +23,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/content/**",
                         "/api/lawyer/**",
                         "/api/template/**",
-                        "/api/notice/**");
+                        "/api/notice/list",
+                        "/api/notice/detail/*");
     }
 }

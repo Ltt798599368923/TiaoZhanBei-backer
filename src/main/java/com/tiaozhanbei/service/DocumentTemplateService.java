@@ -35,6 +35,7 @@ public class DocumentTemplateService {
             map.put("title", template.getTitle());
             map.put("description", template.getDescription());
             map.put("category", template.getCategory());
+            map.put("hasFile", template.getFilePath() != null && !template.getFilePath().trim().isEmpty());
             map.put("downloadCount", template.getDownloadCount());
             map.put("time", template.getCreatedTime().format(DATE_FORMATTER));
             return map;
@@ -51,6 +52,7 @@ public class DocumentTemplateService {
             map.put("title", template.getTitle());
             map.put("description", template.getDescription());
             map.put("category", template.getCategory());
+            map.put("hasFile", template.getFilePath() != null && !template.getFilePath().trim().isEmpty());
             map.put("downloadCount", template.getDownloadCount());
             map.put("time", template.getCreatedTime().format(DATE_FORMATTER));
             return map;
