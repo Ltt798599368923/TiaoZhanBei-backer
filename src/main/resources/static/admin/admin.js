@@ -132,6 +132,9 @@
   const enterConsole = () => {
     loginShell.classList.add('hidden');
     shell.classList.remove('hidden');
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     render();
   };
   const loginResult = new URLSearchParams(window.location.search).get('login');
