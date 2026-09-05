@@ -7,7 +7,11 @@ import com.tiaozhanbei.repository.ContentItemRepository;
 import com.tiaozhanbei.repository.LawyerRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +33,12 @@ public class AdminContentController {
     }
 
     private boolean authorized(String token) {
-        return adminToken != null && !adminToken.trim().isEmpty() && adminToken.trim().equals(token);
+        if (adminToken != null && !adminToken.trim().isEmpty() && adminToken.trim().equals(token)) return true;
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) return false;
+        HttpServletRequest request = attributes.getRequest();
+        HttpSession session = request.getSession(false);
+        return session != null && Boolean.TRUE.equals(session.getAttribute(AdminPageController.ADMIN_SESSION_ATTRIBUTE));
     }
 
     private <T> ApiResponse<T> forbidden() {

@@ -74,5 +74,9 @@ jobs:
             test "$login_status" = "303"
             dashboard_status=$(curl -sS -o /dev/null -w '%{http_code}' -b "$cookie_jar" http://127.0.0.1:18080/api/admin/dashboard)
             test "$dashboard_status" = "200"
+            lawyer_status=$(curl -sS -o /dev/null -w '%{http_code}' -b "$cookie_jar" http://127.0.0.1:18080/api/admin/lawyers)
+            test "$lawyer_status" = "200"
+            content_status=$(curl -sS -o /dev/null -w '%{http_code}' -b "$cookie_jar" 'http://127.0.0.1:18080/api/admin/content?type=article')
+            test "$content_status" = "200"
             rm -f /root/tiaozhanbei-deployment.tar.gz
           REMOTE_COMMANDS
