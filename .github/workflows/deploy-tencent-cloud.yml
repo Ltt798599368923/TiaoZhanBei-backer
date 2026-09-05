@@ -57,6 +57,15 @@ jobs:
             tar -xzf /root/tiaozhanbei-deployment.tar.gz -C /root/TiaoZhanBei-backer
             cd /root/TiaoZhanBei-backer
             docker compose --env-file deploy/tencent-cloud/.env -f deploy/tencent-cloud/docker-compose.yml up -d --build app
+            app_ready=false
+            for attempt in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:18080/api/ai/health >/dev/null; then
+                app_ready=true
+                break
+              fi
+              sleep 2
+            done
+            test "$app_ready" = "true"
             cookie_jar=$(mktemp)
             trap 'rm -f "$cookie_jar"' EXIT
             admin_token=$(sed -n 's/^ADMIN_TOKEN=//p' deploy/tencent-cloud/.env)
