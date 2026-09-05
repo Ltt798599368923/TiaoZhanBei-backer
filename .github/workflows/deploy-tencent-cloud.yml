@@ -30,7 +30,7 @@ jobs:
             --exclude=uploads \
             --exclude=deploy/tencent-cloud/.env \
             --exclude=deploy/tencent-cloud/data \
-            -czf deployment.tar.gz .
+            -czf "$RUNNER_TEMP/deployment.tar.gz" .
 
       - name: Configure deployment key
         uses: webfactory/ssh-agent@v0.9.0
@@ -50,7 +50,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.TENCENT_DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.TENCENT_DEPLOY_PORT }}
         run: |
-          scp -P "$DEPLOY_PORT" deployment.tar.gz "root@$DEPLOY_HOST:/root/tiaozhanbei-deployment.tar.gz"
+          scp -P "$DEPLOY_PORT" "$RUNNER_TEMP/deployment.tar.gz" "root@$DEPLOY_HOST:/root/tiaozhanbei-deployment.tar.gz"
           ssh -p "$DEPLOY_PORT" "root@$DEPLOY_HOST" <<'REMOTE_COMMANDS'
             set -eu
             test -f /root/TiaoZhanBei-backer/deploy/tencent-cloud/.env
