@@ -1,5 +1,5 @@
 (() => {
-  const state = { token: sessionStorage.getItem('adminToken') || '', tab: 'dashboard', content: null, lawyer: null };
+  const state = { token: '', tab: 'dashboard', content: null, lawyer: null };
   const shell = document.querySelector('#app-shell');
   const loginShell = document.querySelector('#login-shell');
   const area = document.querySelector('#content-area');
@@ -39,30 +39,6 @@
   const showError = error => alert(error.message || '操作失败，请稍后重试');
   const formatTime = value => value ? String(value).replace('T', ' ').slice(0, 16) : '-';
   const status = value => `<span class="status ${value !== 'pending' ? 'done' : ''}">${escapeHtml(value || 'pending')}</span>`;
-  const login = password => new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/admin/login', true);
-    xhr.timeout = 15000;
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.onload = () => {
-      let body;
-      try {
-        body = JSON.parse(xhr.responseText);
-      } catch (_) {
-        reject(new Error('服务器返回内容异常，请稍后重试'));
-        return;
-      }
-      if (xhr.status !== 200 || !body || body.code !== 200) {
-        reject(new Error((body && body.message) || '登录失败'));
-        return;
-      }
-      resolve(body.data);
-    };
-    xhr.onerror = () => reject(new Error('网络连接失败，请检查服务器状态'));
-    xhr.ontimeout = () => reject(new Error('登录请求超时，请稍后重试'));
-    xhr.send(JSON.stringify({ password }));
-  });
-
   async function render() {
     document.querySelectorAll('.sidebar button').forEach(button => button.classList.toggle('active', button.dataset.tab === state.tab));
     try {
@@ -152,7 +128,14 @@
   };
 
   document.querySelector('#sidebar').addEventListener('click', event => { const tab = event.target.dataset.tab; if (tab) window.adminApp.changeTab(tab); });
-  document.querySelector('#login-form').addEventListener('submit', async event => { event.preventDefault(); const message = document.querySelector('#login-message'); const button = event.currentTarget.querySelector('button[type="submit"]'); try { const password = document.querySelector('#admin-token').value.trim().replace(/^(?:NEW_)?ADMIN_TOKEN=/, ''); message.textContent = '登录中...'; button.disabled = true; const result = await login(password); state.token = result.token; sessionStorage.setItem('adminToken', state.token); loginShell.classList.add('hidden'); shell.classList.remove('hidden'); await render(); } catch (error) { message.textContent = error.message; } finally { button.disabled = false; } });
-  document.querySelector('#logout-button').addEventListener('click', () => { state.token = ''; sessionStorage.removeItem('adminToken'); shell.classList.add('hidden'); loginShell.classList.remove('hidden'); });
-  if (state.token) { loginShell.classList.add('hidden'); shell.classList.remove('hidden'); render(); }
+  document.querySelector('#logout-button').addEventListener('click', () => { window.location.assign('/admin/logout'); });
+  const loginResult = new URLSearchParams(window.location.search).get('login');
+  if (loginResult === 'success') {
+    window.history.replaceState({}, document.title, '/admin/index.html');
+    loginShell.classList.add('hidden');
+    shell.classList.remove('hidden');
+    render();
+  } else if (loginResult === 'failed') {
+    document.querySelector('#login-message').textContent = '管理员口令错误';
+  }
 })();

@@ -57,5 +57,13 @@ jobs:
             tar -xzf /root/tiaozhanbei-deployment.tar.gz -C /root/TiaoZhanBei-backer
             cd /root/TiaoZhanBei-backer
             docker compose --env-file deploy/tencent-cloud/.env -f deploy/tencent-cloud/docker-compose.yml up -d --build app
+            cookie_jar=$(mktemp)
+            trap 'rm -f "$cookie_jar"' EXIT
+            admin_token=$(sed -n 's/^ADMIN_TOKEN=//p' deploy/tencent-cloud/.env)
+            test -n "$admin_token"
+            login_status=$(curl -sS -o /dev/null -w '%{http_code}' -c "$cookie_jar" -X POST http://127.0.0.1:18080/admin/login --data-urlencode "password=$admin_token")
+            test "$login_status" = "303"
+            dashboard_status=$(curl -sS -o /dev/null -w '%{http_code}' -b "$cookie_jar" http://127.0.0.1:18080/api/admin/dashboard)
+            test "$dashboard_status" = "200"
             rm -f /root/tiaozhanbei-deployment.tar.gz
           REMOTE_COMMANDS

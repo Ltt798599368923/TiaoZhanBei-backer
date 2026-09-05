@@ -12,7 +12,11 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -33,6 +37,15 @@ public class AdminController {
     @Autowired private FileStorageService fileStorageService;
 
     private boolean checkAuth(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
+        if (matchesConfiguredToken(token)) return true;
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) return false;
+        HttpServletRequest request = attributes.getRequest();
+        HttpSession session = request.getSession(false);
+        return session != null && Boolean.TRUE.equals(session.getAttribute(AdminPageController.ADMIN_SESSION_ATTRIBUTE));
+    }
+
+    private boolean matchesConfiguredToken(String token) {
         return adminToken != null && !adminToken.trim().isEmpty() && adminToken.trim().equals(token);
     }
 
@@ -42,11 +55,12 @@ public class AdminController {
 
     // ==================== 认证 ====================
     @PostMapping("/login")
-    public ApiResponse<Map<String, String>> login(@RequestBody Map<String, String> body) {
+    public ApiResponse<Map<String, String>> login(@RequestBody Map<String, String> body, HttpSession session) {
         String pwd = body.getOrDefault("password", "");
-        if (checkAuth(pwd)) {
+        if (matchesConfiguredToken(pwd)) {
+            session.setAttribute(AdminPageController.ADMIN_SESSION_ATTRIBUTE, Boolean.TRUE);
             Map<String, String> result = new HashMap<>();
-            result.put("token", adminToken);
+            result.put("authenticated", "true");
             return ApiResponse.success("登录成功", result);
         }
         return ApiResponse.error("密码错误");

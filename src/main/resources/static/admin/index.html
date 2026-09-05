@@ -8,10 +8,10 @@
 </head>
 <body>
   <main class="login-shell" id="login-shell">
-    <form class="login-form" id="login-form">
+    <form class="login-form" id="login-form" action="/admin/login" method="post">
       <h1>法视界管理台</h1>
       <p>使用服务器配置的管理员口令登录。</p>
-      <label>管理员口令<input id="admin-token" type="password" autocomplete="current-password" required></label>
+      <label>管理员口令<input id="admin-token" name="password" type="password" autocomplete="current-password" required></label>
       <button type="submit">登录</button>
       <p class="form-message" id="login-message"></p>
     </form>
@@ -35,6 +35,6 @@
       <section class="content-area" id="content-area"></section>
     </div>
   </main>
-  <script src="/admin/admin.js?v=20260905-2"></script>
+  <script src="/admin/admin.js?v=20260905-3"></script>
 </body>
 </html>
