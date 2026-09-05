@@ -21,13 +21,13 @@
   async function render() {
     document.querySelectorAll('.sidebar button').forEach(button => button.classList.toggle('active', button.dataset.tab === state.tab));
     try {
-      if (state.tab === 'dashboard') return renderDashboard();
-      if (state.tab === 'consultations') return renderConsultations();
-      if (state.tab === 'contracts') return renderContracts();
-      if (state.tab === 'content') return renderContent();
-      if (state.tab === 'lawyers') return renderLawyers();
-      if (state.tab === 'templates') return renderTemplates();
-      if (state.tab === 'notices') return renderNotices();
+      if (state.tab === 'dashboard') await renderDashboard();
+      if (state.tab === 'consultations') await renderConsultations();
+      if (state.tab === 'contracts') await renderContracts();
+      if (state.tab === 'content') await renderContent();
+      if (state.tab === 'lawyers') await renderLawyers();
+      if (state.tab === 'templates') await renderTemplates();
+      if (state.tab === 'notices') await renderNotices();
     } catch (error) {
       area.innerHTML = `<div class="panel"><p class="form-message">${escapeHtml(error.message)}</p></div>`;
     }
@@ -107,7 +107,7 @@
   };
 
   document.querySelector('#sidebar').addEventListener('click', event => { const tab = event.target.dataset.tab; if (tab) window.adminApp.changeTab(tab); });
-  document.querySelector('#login-form').addEventListener('submit', async event => { event.preventDefault(); const message = document.querySelector('#login-message'); try { const password = document.querySelector('#admin-token').value; const response = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); const body = await response.json(); if (!response.ok || body.code !== 200) throw new Error(body.message || '登录失败'); state.token = body.data.token; sessionStorage.setItem('adminToken', state.token); loginShell.classList.add('hidden'); shell.classList.remove('hidden'); render(); } catch (error) { message.textContent = error.message; } });
+  document.querySelector('#login-form').addEventListener('submit', async event => { event.preventDefault(); const message = document.querySelector('#login-message'); const button = event.currentTarget.querySelector('button[type="submit"]'); try { const password = document.querySelector('#admin-token').value.trim().replace(/^(?:NEW_)?ADMIN_TOKEN=/, ''); message.textContent = '登录中...'; button.disabled = true; const response = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); const body = await response.json(); if (!response.ok || body.code !== 200) throw new Error(body.message || '登录失败'); state.token = body.data.token; sessionStorage.setItem('adminToken', state.token); loginShell.classList.add('hidden'); shell.classList.remove('hidden'); await render(); } catch (error) { message.textContent = error.message; } finally { button.disabled = false; } });
   document.querySelector('#logout-button').addEventListener('click', () => { state.token = ''; sessionStorage.removeItem('adminToken'); shell.classList.add('hidden'); loginShell.classList.remove('hidden'); });
   if (state.token) { loginShell.classList.add('hidden'); shell.classList.remove('hidden'); render(); }
 })();
