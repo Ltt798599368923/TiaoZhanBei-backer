@@ -7,9 +7,16 @@
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c]);
   const fetchWithTimeout = async (url, options = {}, timeout = 15000) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
+    let timer;
     try {
-      return await fetch(url, { ...options, signal: controller.signal });
+      const request = fetch(url, { ...options, signal: controller.signal });
+      const timeoutError = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error('请求超时，请确认服务器正在运行后重试'));
+        }, timeout);
+      });
+      return await Promise.race([request, timeoutError]);
     } catch (error) {
       if (error.name === 'AbortError') throw new Error('请求超时，请确认服务器正在运行后重试');
       throw error;
