@@ -129,13 +129,18 @@
 
   document.querySelector('#sidebar').addEventListener('click', event => { const tab = event.target.dataset.tab; if (tab) window.adminApp.changeTab(tab); });
   document.querySelector('#logout-button').addEventListener('click', () => { window.location.assign('/admin/logout'); });
-  const loginResult = new URLSearchParams(window.location.search).get('login');
-  if (loginResult === 'success') {
-    window.history.replaceState({}, document.title, '/admin/index.html');
+  const enterConsole = () => {
     loginShell.classList.add('hidden');
     shell.classList.remove('hidden');
     render();
+  };
+  const loginResult = new URLSearchParams(window.location.search).get('login');
+  if (loginResult === 'success') {
+    window.history.replaceState({}, document.title, '/admin/index.html');
+    enterConsole();
   } else if (loginResult === 'failed') {
     document.querySelector('#login-message').textContent = '管理员口令错误';
+  } else {
+    request('/dashboard').then(enterConsole).catch(() => {});
   }
 })();
