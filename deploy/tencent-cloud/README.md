@@ -46,9 +46,26 @@ curl http://127.0.0.1:18080/api/ai/health
 
 Create an `A` record such as `api.example.com` pointing to `124.220.104.181`. After DNS takes effect, add the server block from `nginx/reverse-proxy.conf.example` to the existing Nginx configuration, replace `api.example.com` with the actual API domain, and add an HTTPS certificate. The final HTTPS domain must be added to the Mini Program request legal-domain list before changing the frontend `BASE_URL`.
 
-## Updating
+## Updating manually
 
 ```sh
-git pull
+tar -xzf /root/tiaozhanbei-deployment.tar.gz -C /root/TiaoZhanBei-backer
+cd /root/TiaoZhanBei-backer
 docker compose --env-file deploy/tencent-cloud/.env -f deploy/tencent-cloud/docker-compose.yml up -d --build
 ```
+
+## Automatic deployment with GitHub Actions
+
+The server does not need outbound GitHub access. The workflow in
+`.github/workflows/deploy-tencent-cloud.yml` packages the source in GitHub
+Actions and uploads it over SSH whenever `main` is updated.
+
+Create these repository Actions secrets before enabling it:
+
+- `TENCENT_DEPLOY_HOST`: the server public IP or API host name
+- `TENCENT_DEPLOY_PORT`: the SSH deployment port
+- `TENCENT_DEPLOY_SSH_KEY`: a dedicated private deployment key with no passphrase
+
+Install the corresponding public key in `/root/.ssh/authorized_keys` on the
+server. The workflow deliberately excludes the server `.env` file and the
+PostgreSQL/upload data directories.

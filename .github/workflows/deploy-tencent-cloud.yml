@@ -1,0 +1,61 @@
+name: Deploy Backend To Tencent Cloud
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tencent-cloud-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Create deployment archive
+        run: |
+          tar \
+            --exclude-vcs \
+            --exclude=target \
+            --exclude=uploads \
+            --exclude=deploy/tencent-cloud/.env \
+            --exclude=deploy/tencent-cloud/data \
+            -czf deployment.tar.gz .
+
+      - name: Configure deployment key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TENCENT_DEPLOY_SSH_KEY }}
+
+      - name: Trust the server host key
+        env:
+          DEPLOY_HOST: ${{ secrets.TENCENT_DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.TENCENT_DEPLOY_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload and deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.TENCENT_DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.TENCENT_DEPLOY_PORT }}
+        run: |
+          scp -P "$DEPLOY_PORT" deployment.tar.gz "root@$DEPLOY_HOST:/root/tiaozhanbei-deployment.tar.gz"
+          ssh -p "$DEPLOY_PORT" "root@$DEPLOY_HOST" <<'REMOTE_COMMANDS'
+            set -eu
+            test -f /root/TiaoZhanBei-backer/deploy/tencent-cloud/.env
+            tar -xzf /root/tiaozhanbei-deployment.tar.gz -C /root/TiaoZhanBei-backer
+            cd /root/TiaoZhanBei-backer
+            docker compose --env-file deploy/tencent-cloud/.env -f deploy/tencent-cloud/docker-compose.yml up -d --build app
+            rm -f /root/tiaozhanbei-deployment.tar.gz
+          REMOTE_COMMANDS
