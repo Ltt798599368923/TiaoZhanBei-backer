@@ -5,11 +5,15 @@
   const area = document.querySelector('#content-area');
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c]);
-  const fetchWithTimeout = async (url, options = {}, timeout = 15000) => {
+  const requestJsonWithTimeout = async (url, options = {}, timeout = 15000) => {
     const controller = new AbortController();
     let timer;
     try {
-      const request = fetch(url, { ...options, signal: controller.signal });
+      const request = (async () => {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        const body = await response.json().catch(() => null);
+        return { response, body };
+      })();
       const timeoutError = new Promise((_, reject) => {
         timer = setTimeout(() => {
           controller.abort();
@@ -25,11 +29,10 @@
     }
   };
   const request = async (path, options = {}) => {
-    const response = await fetchWithTimeout(`/api/admin${path}`, {
+    const { response, body } = await requestJsonWithTimeout(`/api/admin${path}`, {
       ...options,
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': state.token, ...(options.headers || {}) }
     });
-    const body = await response.json().catch(() => null);
     if (!response.ok || !body || body.code !== 200) throw new Error((body && body.message) || '请求失败');
     return body.data;
   };
@@ -126,7 +129,7 @@
   };
 
   document.querySelector('#sidebar').addEventListener('click', event => { const tab = event.target.dataset.tab; if (tab) window.adminApp.changeTab(tab); });
-  document.querySelector('#login-form').addEventListener('submit', async event => { event.preventDefault(); const message = document.querySelector('#login-message'); const button = event.currentTarget.querySelector('button[type="submit"]'); try { const password = document.querySelector('#admin-token').value.trim().replace(/^(?:NEW_)?ADMIN_TOKEN=/, ''); message.textContent = '登录中...'; button.disabled = true; const response = await fetchWithTimeout('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); const body = await response.json(); if (!response.ok || body.code !== 200) throw new Error(body.message || '登录失败'); state.token = body.data.token; sessionStorage.setItem('adminToken', state.token); loginShell.classList.add('hidden'); shell.classList.remove('hidden'); await render(); } catch (error) { message.textContent = error.message; } finally { button.disabled = false; } });
+  document.querySelector('#login-form').addEventListener('submit', async event => { event.preventDefault(); const message = document.querySelector('#login-message'); const button = event.currentTarget.querySelector('button[type="submit"]'); try { const password = document.querySelector('#admin-token').value.trim().replace(/^(?:NEW_)?ADMIN_TOKEN=/, ''); message.textContent = '登录中...'; button.disabled = true; const { response, body } = await requestJsonWithTimeout('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) }); if (!response.ok || !body || body.code !== 200) throw new Error((body && body.message) || '登录失败'); state.token = body.data.token; sessionStorage.setItem('adminToken', state.token); loginShell.classList.add('hidden'); shell.classList.remove('hidden'); await render(); } catch (error) { message.textContent = error.message; } finally { button.disabled = false; } });
   document.querySelector('#logout-button').addEventListener('click', () => { state.token = ''; sessionStorage.removeItem('adminToken'); shell.classList.add('hidden'); loginShell.classList.remove('hidden'); });
   if (state.token) { loginShell.classList.add('hidden'); shell.classList.remove('hidden'); render(); }
 })();
