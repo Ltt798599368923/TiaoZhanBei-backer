@@ -12,7 +12,7 @@ import java.io.IOException;
 
 @Controller
 public class AdminPageController {
-    static final String ADMIN_SESSION_ATTRIBUTE = "adminAuthenticated";
+    public static final String ADMIN_SESSION_ATTRIBUTE = "adminAuthenticated";
 
     @Value("${admin.token:}")
     private String adminToken;

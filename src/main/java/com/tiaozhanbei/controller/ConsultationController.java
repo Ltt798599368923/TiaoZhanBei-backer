@@ -4,6 +4,7 @@ import com.tiaozhanbei.dto.ApiResponse;
 import com.tiaozhanbei.dto.ConsultationRequest;
 import com.tiaozhanbei.entity.Consultation;
 import com.tiaozhanbei.service.ConsultationService;
+import com.tiaozhanbei.service.ConsultationChatHub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +19,12 @@ public class ConsultationController {
     private static final Logger logger = LoggerFactory.getLogger(ConsultationController.class);
 
     private final ConsultationService consultationService;
+    private final ConsultationChatHub consultationChatHub;
 
     @Autowired
-    public ConsultationController(ConsultationService consultationService) {
+    public ConsultationController(ConsultationService consultationService, ConsultationChatHub consultationChatHub) {
         this.consultationService = consultationService;
+        this.consultationChatHub = consultationChatHub;
     }
 
     @GetMapping("/list/{userId}")
@@ -51,6 +54,30 @@ public class ConsultationController {
         } catch (Exception e) {
             logger.error("Create consultation failed", e);
             return ApiResponse.error("提交咨询失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/messages/{userId}/{consultationId}")
+    public ApiResponse<List<Map<String, Object>>> getMessages(@PathVariable Long userId,
+                                                               @PathVariable Long consultationId) {
+        try {
+            return ApiResponse.success(consultationService.getMessagesForUser(userId, consultationId));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/messages/{userId}/{consultationId}")
+    public ApiResponse<Map<String, Object>> sendMessage(@PathVariable Long userId,
+                                                        @PathVariable Long consultationId,
+                                                        @RequestBody Map<String, String> body) {
+        try {
+            String content = body == null ? "" : body.get("content");
+            Map<String, Object> message = consultationService.appendUserMessage(userId, consultationId, content);
+            consultationChatHub.broadcast(consultationId, message);
+            return ApiResponse.success("发送成功", message);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
         }
     }
 

@@ -1,5 +1,6 @@
 (() => {
-  const state = { token: '', tab: 'dashboard', content: null, lawyer: null };
+  const state = { token: '', tab: 'dashboard', content: null, lawyer: null, consultation: null, consultationMessages: [] };
+  let consultationSocket = null;
   const shell = document.querySelector('#app-shell');
   const loginShell = document.querySelector('#login-shell');
   const area = document.querySelector('#content-area');
@@ -61,8 +62,42 @@
   }
 
   async function renderConsultations() {
+    if (state.consultation) {
+      await renderConsultationChat();
+      return;
+    }
     const list = await request('/consultations');
-    area.innerHTML = `<div class="toolbar"><h2>咨询处理</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['标题', '类型', '联系方式', '提交时间', '状态', '处理'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.content)}</div></td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.phone || '-')}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><select id="consult-status-${item.id}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>待处理</option><option value="processing" ${item.status === 'processing' ? 'selected' : ''}>处理中</option><option value="replied" ${item.status === 'replied' ? 'selected' : ''}>已回复</option><option value="closed" ${item.status === 'closed' ? 'selected' : ''}>已关闭</option></select><textarea id="consult-reply-${item.id}" placeholder="填写真实处理回复">${escapeHtml(item.reply || '')}</textarea><button onclick="adminApp.saveConsult(${item.id})">保存处理结果</button></td></tr>`)}`;
+    area.innerHTML = `<div class="toolbar"><h2>咨询处理</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['标题', '类型', '联系方式', '提交时间', '状态', '会话'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.content)}</div></td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.phone || '-')}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><button class="secondary" onclick="adminApp.openConsultation(${item.id})">打开会话</button></td></tr>`)}`;
+  }
+
+  const chatMessageHtml = message => `<div class="consult-chat-message ${message.senderRole === 'admin' ? 'outgoing' : 'incoming'}"><div class="consult-chat-role">${message.senderRole === 'admin' ? '管理台' : '用户'} · ${formatTime(message.createdTime)}</div><div class="consult-chat-bubble">${escapeHtml(message.content)}</div></div>`;
+  const renderConsultationMessages = () => {
+    const thread = document.querySelector('#consult-chat-thread');
+    if (!thread) return;
+    thread.innerHTML = state.consultationMessages.length ? state.consultationMessages.map(chatMessageHtml).join('') : '<p class="muted">暂无会话消息</p>';
+    thread.scrollTop = thread.scrollHeight;
+  };
+  const appendConsultationMessage = message => {
+    if (!message || state.consultationMessages.some(item => String(item.id) === String(message.id))) return;
+    state.consultationMessages = [...state.consultationMessages, message];
+    renderConsultationMessages();
+  };
+  const connectConsultationSocket = consultationId => {
+    if (consultationSocket) consultationSocket.close();
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    consultationSocket = new WebSocket(`${protocol}//${location.host}/ws/chat?role=admin&consultationId=${consultationId}`);
+    consultationSocket.onmessage = event => {
+      try {
+        if (state.consultation && state.consultation.id === consultationId) appendConsultationMessage(JSON.parse(event.data));
+      } catch (_) { }
+    };
+  };
+  async function renderConsultationChat() {
+    const consultationId = state.consultation.id;
+    state.consultationMessages = await request(`/consultations/${consultationId}/messages`);
+    area.innerHTML = `<div class="toolbar"><div><button class="secondary" onclick="adminApp.closeConsultation()">返回列表</button><h2>咨询会话 #${consultationId}</h2></div><button class="secondary" onclick="adminApp.refreshConsultation()">刷新</button></div><div class="consult-chat-panel"><div class="consult-chat-thread" id="consult-chat-thread"></div><div class="consult-chat-composer"><textarea id="consult-chat-input" placeholder="输入处理回复，用户将即时收到"></textarea><button onclick="adminApp.sendConsultationMessage()">发送</button></div></div>`;
+    renderConsultationMessages();
+    connectConsultationSocket(consultationId);
   }
 
   async function renderContracts() {
@@ -130,13 +165,16 @@
 
   window.adminApp = {
     refresh: render,
-    changeTab: tab => { state.tab = tab; state.content = null; state.lawyer = null; render(); },
+    changeTab: tab => { if (consultationSocket) consultationSocket.close(); consultationSocket = null; state.tab = tab; state.content = null; state.lawyer = null; state.consultation = null; render(); },
     changeContentType: type => { state.contentType = type; state.content = null; render(); },
     cancelContentEdit: () => { state.content = null; render(); },
     cancelLawyerEdit: () => { state.lawyer = null; render(); },
     editContent: async id => { try { state.content = await request(`/content/${id}`); render(); } catch (error) { showError(error); } },
     editLawyer: async id => { try { state.lawyer = await request(`/lawyers/${id}`); render(); } catch (error) { showError(error); } },
-    saveConsult: async id => { try { await request(`/consultations/${id}`, { method: 'PUT', body: JSON.stringify({ status: document.querySelector(`#consult-status-${id}`).value, reply: document.querySelector(`#consult-reply-${id}`).value }) }); render(); } catch (error) { showError(error); } },
+    openConsultation: id => { state.consultation = { id }; render(); },
+    closeConsultation: () => { if (consultationSocket) consultationSocket.close(); consultationSocket = null; state.consultation = null; state.consultationMessages = []; render(); },
+    refreshConsultation: () => renderConsultationChat().catch(showError),
+    sendConsultationMessage: async () => { const input = document.querySelector('#consult-chat-input'); const content = input ? input.value.trim() : ''; if (!content) return; try { const message = await request(`/consultations/${state.consultation.id}/messages`, { method: 'POST', body: JSON.stringify({ content }) }); if (input) input.value = ''; appendConsultationMessage(message); } catch (error) { showError(error); } },
     saveContract: async id => { try { await request(`/contracts/${id}`, { method: 'PUT', body: JSON.stringify({ status: document.querySelector(`#contract-status-${id}`).value, reviewResult: document.querySelector(`#contract-review-${id}`).value }) }); render(); } catch (error) { showError(error); } },
     deleteContent: async id => { if (confirm('确定删除这条内容？')) try { await request(`/content/${id}`, { method: 'DELETE' }); render(); } catch (error) { showError(error); } },
     deleteLawyer: async id => { if (confirm('确定删除该律师？')) try { await request(`/lawyers/${id}`, { method: 'DELETE' }); render(); } catch (error) { showError(error); } },

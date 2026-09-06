@@ -46,4 +46,13 @@ td .muted { color: #8c8c8c; font-size: 12px; }
 .empty { padding: 40px 16px; color: #8c8c8c; text-align: center; }
 .status { display: inline-block; color: #ad6800; background: #fffbe6; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
 .status.done { color: #237804; background: #f6ffed; }
+.consult-chat-panel { max-width: 860px; background: #fff; border: 1px solid #e7e8ea; border-radius: 8px; overflow: hidden; }
+.consult-chat-thread { min-height: 360px; max-height: 56vh; overflow-y: auto; padding: 20px; background: #fafafa; }
+.consult-chat-message { display: flex; flex-direction: column; max-width: 76%; margin-bottom: 14px; }
+.consult-chat-message.outgoing { align-items: flex-end; margin-left: auto; }
+.consult-chat-role { margin-bottom: 5px; color: #8c8c8c; font-size: 12px; }
+.consult-chat-bubble { padding: 10px 12px; color: #262626; line-height: 1.55; white-space: pre-wrap; background: #fff; border: 1px solid #e7e8ea; border-radius: 6px; }
+.consult-chat-message.outgoing .consult-chat-bubble { color: #fff; background: #c0190e; border-color: #c0190e; }
+.consult-chat-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 16px; border-top: 1px solid #e7e8ea; }
+.consult-chat-composer textarea { min-height: 70px; }
 @media (max-width: 720px) { .workspace { grid-template-columns: 1fr; } .sidebar { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid #e7e8ea; } .sidebar button { width: auto; white-space: nowrap; } .content-area { padding: 16px; } .metrics, .form-grid { grid-template-columns: 1fr; } .form-grid .full { grid-column: auto; } }

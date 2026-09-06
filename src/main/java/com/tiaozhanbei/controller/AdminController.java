@@ -4,6 +4,8 @@ import com.tiaozhanbei.dto.ApiResponse;
 import com.tiaozhanbei.entity.*;
 import com.tiaozhanbei.repository.*;
 import com.tiaozhanbei.service.FileStorageService;
+import com.tiaozhanbei.service.ConsultationService;
+import com.tiaozhanbei.service.ConsultationChatHub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,8 @@ public class AdminController {
     @Autowired private FavoriteRepository favoriteRepository;
     @Autowired private SystemNoticeRepository systemNoticeRepository;
     @Autowired private FileStorageService fileStorageService;
+    @Autowired private ConsultationService consultationService;
+    @Autowired private ConsultationChatHub consultationChatHub;
 
     private boolean checkAuth(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
         if (matchesConfiguredToken(token)) return true;
@@ -167,19 +171,42 @@ public class AdminController {
         Consultation c = consultationRepository.findById(id).orElse(null);
         if (c == null) return ApiResponse.error("咨询不存在");
         if (body == null) return ApiResponse.error("请求内容不能为空");
-        String previousReply = c.getReply();
         if (body.containsKey("status")) c.setStatus(body.get("status"));
+        consultationRepository.save(c);
         if (body.containsKey("reply")) {
             String reply = body.get("reply");
-            c.setReply(reply == null ? null : reply.trim());
-            c.setRepliedTime(reply == null || reply.trim().isEmpty() ? null : LocalDateTime.now());
-            if (reply != null && !reply.trim().isEmpty() && "pending".equals(c.getStatus())) c.setStatus("replied");
-        }
-        consultationRepository.save(c);
-        if (c.getReply() != null && !c.getReply().trim().isEmpty() && !c.getReply().equals(previousReply)) {
-            createUserNotice(c.getUserId(), "咨询已回复", "您的咨询《" + c.getTitle() + "》已有处理回复，请在“我的咨询”中查看详情。", "consultation_reply");
+            if (reply != null && !reply.trim().isEmpty() && !reply.trim().equals(c.getReply())) {
+                Map<String, Object> message = consultationService.appendAdminMessage(id, reply);
+                consultationChatHub.broadcast(id, message);
+            }
         }
         return ApiResponse.success("操作成功", null);
+    }
+
+    @GetMapping("/consultations/{id}/messages")
+    public ApiResponse<List<Map<String, Object>>> getConsultationMessages(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token, @PathVariable Long id) {
+        if (!checkAuth(token)) return authError();
+        try {
+            return ApiResponse.success(consultationService.getMessagesForAdmin(id));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/consultations/{id}/messages")
+    public ApiResponse<Map<String, Object>> sendConsultationMessage(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @PathVariable Long id, @RequestBody Map<String, String> body) {
+        if (!checkAuth(token)) return authError();
+        try {
+            String content = body == null ? "" : body.get("content");
+            Map<String, Object> message = consultationService.appendAdminMessage(id, content);
+            consultationChatHub.broadcast(id, message);
+            return ApiResponse.success("发送成功", message);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     @DeleteMapping("/consultations/{id}")
