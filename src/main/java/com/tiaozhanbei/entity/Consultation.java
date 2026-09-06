@@ -37,6 +37,15 @@ public class Consultation {
     @Column(name = "replied_time")
     private LocalDateTime repliedTime;
 
+    @Column(name = "appointment_time")
+    private LocalDateTime appointmentTime;
+
+    @Column(name = "contact_method", length = 100)
+    private String contactMethod;
+
+    @Column(name = "booking_note", columnDefinition = "TEXT")
+    private String bookingNote;
+
     @Column(name = "created_time")
     private LocalDateTime createdTime;
 
@@ -139,6 +148,13 @@ public class Consultation {
     public void setRepliedTime(LocalDateTime repliedTime) {
         this.repliedTime = repliedTime;
     }
+
+    public LocalDateTime getAppointmentTime() { return appointmentTime; }
+    public void setAppointmentTime(LocalDateTime appointmentTime) { this.appointmentTime = appointmentTime; }
+    public String getContactMethod() { return contactMethod; }
+    public void setContactMethod(String contactMethod) { this.contactMethod = contactMethod; }
+    public String getBookingNote() { return bookingNote; }
+    public void setBookingNote(String bookingNote) { this.bookingNote = bookingNote; }
 
     public LocalDateTime getCreatedTime() {
         return createdTime;

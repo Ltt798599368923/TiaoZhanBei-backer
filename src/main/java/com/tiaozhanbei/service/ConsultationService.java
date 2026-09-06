@@ -1,6 +1,7 @@
 package com.tiaozhanbei.service;
 
 import com.tiaozhanbei.dto.ConsultationRequest;
+import com.tiaozhanbei.dto.BookingUpdateRequest;
 import com.tiaozhanbei.entity.Consultation;
 import com.tiaozhanbei.entity.ConsultationMessage;
 import com.tiaozhanbei.entity.Lawyer;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Arrays;
 import java.util.List;
@@ -52,6 +54,9 @@ public class ConsultationService {
             map.put("lawyerName", getLawyerName(cons.getLawyerId()));
             map.put("status", cons.getStatus());
             map.put("reply", cons.getReply());
+            map.put("appointmentTime", cons.getAppointmentTime() == null ? null : cons.getAppointmentTime().format(DATE_FORMATTER));
+            map.put("contactMethod", cons.getContactMethod());
+            map.put("bookingNote", cons.getBookingNote());
             map.put("repliedTime", cons.getRepliedTime() == null ? null : cons.getRepliedTime().format(DATE_FORMATTER));
             map.put("time", cons.getCreatedTime().format(DATE_FORMATTER));
             return map;
@@ -76,7 +81,7 @@ public class ConsultationService {
                 throw new IllegalArgumentException("预约律师请填写正确的 11 位手机号码");
             }
             if (consultationRepository.existsByUserIdAndLawyerIdAndIsDeletedFalseAndStatusIn(
-                    userId, request.getLawyerId(), Arrays.asList("pending", "processing", "replied"))) {
+                    userId, request.getLawyerId(), Arrays.asList("pending", "processing", "replied", "confirmed", "need_info"))) {
                 throw new IllegalArgumentException("您已向该律师提交预约，请先等待处理结果");
             }
         }
@@ -125,15 +130,65 @@ public class ConsultationService {
 
     public Map<String, Object> appendAdminMessage(Long consultationId, String content) {
         Consultation consultation = getActiveConsultation(consultationId);
-        if ("closed".equals(consultation.getStatus()) || "cancelled".equals(consultation.getStatus())) {
+        if ((consultation.getLawyerId() != null && isTerminalBookingStatus(consultation.getStatus()))
+                || (consultation.getLawyerId() == null && "closed".equals(consultation.getStatus()))) {
             throw new IllegalArgumentException("该预约或咨询已结束，无法继续处理");
         }
         ConsultationMessage message = saveMessage(consultationId, "admin", content, null);
         consultation.setReply(message.getContent());
         consultation.setRepliedTime(message.getCreatedTime());
-        if (!"closed".equals(consultation.getStatus())) consultation.setStatus("replied");
+        if (consultation.getLawyerId() == null && !"closed".equals(consultation.getStatus())) {
+            consultation.setStatus("replied");
+        }
         consultationRepository.save(consultation);
         return toMessageMap(message);
+    }
+
+    public Map<String, Object> updateBooking(Long consultationId, BookingUpdateRequest request) {
+        Consultation consultation = getActiveConsultation(consultationId);
+        if (consultation.getLawyerId() == null) {
+            throw new IllegalArgumentException("该记录不是律师预约");
+        }
+        if (request == null || isBlank(request.getStatus())) {
+            throw new IllegalArgumentException("请选择预约处理状态");
+        }
+        String status = request.getStatus().trim();
+        if (!Arrays.asList("pending", "processing", "confirmed", "need_info", "declined", "completed").contains(status)) {
+            throw new IllegalArgumentException("预约处理状态无效");
+        }
+        if (isTerminalBookingStatus(consultation.getStatus())) {
+            throw new IllegalArgumentException("该预约已结束，无法继续处理");
+        }
+
+        String contactMethod = trimToNull(request.getContactMethod());
+        String bookingNote = trimToNull(request.getBookingNote());
+        LocalDateTime appointmentTime = parseAppointmentTime(request.getAppointmentTime());
+        if ("confirmed".equals(status) && (appointmentTime == null || contactMethod == null)) {
+            throw new IllegalArgumentException("确认预约时请填写预约时间和沟通方式");
+        }
+        if (("need_info".equals(status) || "declined".equals(status)) && bookingNote == null) {
+            throw new IllegalArgumentException("请填写处理说明");
+        }
+        if (contactMethod != null && contactMethod.length() > 100) {
+            throw new IllegalArgumentException("沟通方式不能超过 100 字");
+        }
+        if (bookingNote != null && bookingNote.length() > 2000) {
+            throw new IllegalArgumentException("处理说明不能超过 2000 字");
+        }
+
+        consultation.setStatus(status);
+        consultation.setAppointmentTime(appointmentTime);
+        consultation.setContactMethod(contactMethod);
+        consultation.setBookingNote(bookingNote);
+        ConsultationMessage message = saveMessage(consultationId, "admin", bookingUpdateMessage(status, appointmentTime, contactMethod, bookingNote), null);
+        consultation.setReply(message.getContent());
+        consultation.setRepliedTime(message.getCreatedTime());
+        Consultation saved = consultationRepository.save(consultation);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("consultation", saved);
+        result.put("message", toMessageMap(message));
+        return result;
     }
 
     public boolean userOwnsActiveConsultation(Long userId, Long consultationId) {
@@ -173,6 +228,45 @@ public class ConsultationService {
         return value != null && value.trim().matches("^1\\d{10}$");
     }
 
+    private String trimToNull(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        return value.trim();
+    }
+
+    private LocalDateTime parseAppointmentTime(String value) {
+        String normalized = trimToNull(value);
+        if (normalized == null) return null;
+        try {
+            return LocalDateTime.parse(normalized);
+        } catch (Exception ignored) {
+            throw new IllegalArgumentException("预约时间格式不正确");
+        }
+    }
+
+    private boolean isTerminalBookingStatus(String status) {
+        return "closed".equals(status) || "cancelled".equals(status)
+                || "declined".equals(status) || "completed".equals(status);
+    }
+
+    private String bookingUpdateMessage(String status, LocalDateTime appointmentTime,
+                                        String contactMethod, String bookingNote) {
+        String summary;
+        if ("confirmed".equals(status)) {
+            summary = "预约已确认：" + appointmentTime.format(DATE_FORMATTER) + "，沟通方式：" + contactMethod;
+        } else if ("need_info".equals(status)) {
+            summary = "请补充预约信息";
+        } else if ("declined".equals(status)) {
+            summary = "本次预约暂无法承接";
+        } else if ("completed".equals(status)) {
+            summary = "本次预约已完成";
+        } else if ("processing".equals(status)) {
+            summary = "平台正在核对预约安排";
+        } else {
+            summary = "预约处理状态已更新";
+        }
+        return bookingNote == null ? summary : summary + "。" + bookingNote;
+    }
+
     private String getLawyerName(Long lawyerId) {
         if (lawyerId == null) return null;
         return lawyerRepository.findById(lawyerId)
@@ -208,7 +302,7 @@ public class ConsultationService {
                 || consultation.getLawyerId() == null || Boolean.TRUE.equals(consultation.getIsDeleted())) {
             return false;
         }
-        if ("closed".equals(consultation.getStatus()) || "cancelled".equals(consultation.getStatus())) {
+        if (isTerminalBookingStatus(consultation.getStatus())) {
             throw new IllegalArgumentException("该预约已结束，无法取消");
         }
         consultation.setStatus("cancelled");

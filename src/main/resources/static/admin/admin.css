@@ -55,4 +55,8 @@ td .muted { color: #8c8c8c; font-size: 12px; }
 .consult-chat-message.outgoing .consult-chat-bubble { color: #fff; background: #c0190e; border-color: #c0190e; }
 .consult-chat-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 16px; border-top: 1px solid #e7e8ea; }
 .consult-chat-composer textarea { min-height: 70px; }
+.booking-panel { padding: 16px; border-top: 1px solid #e7e8ea; }
+.booking-panel h3 { margin-bottom: 0; }
+.booking-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.booking-fields .full { grid-column: 1 / -1; }
 @media (max-width: 720px) { .workspace { grid-template-columns: 1fr; } .sidebar { display: flex; gap: 4px; overflow-x: auto; border-right: 0; border-bottom: 1px solid #e7e8ea; } .sidebar button { width: auto; white-space: nowrap; } .content-area { padding: 16px; } .metrics, .form-grid { grid-template-columns: 1fr; } .form-grid .full { grid-column: auto; } }

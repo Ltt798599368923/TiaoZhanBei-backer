@@ -1,6 +1,7 @@
 package com.tiaozhanbei.controller;
 
 import com.tiaozhanbei.dto.ApiResponse;
+import com.tiaozhanbei.dto.BookingUpdateRequest;
 import com.tiaozhanbei.entity.*;
 import com.tiaozhanbei.repository.*;
 import com.tiaozhanbei.service.FileStorageService;
@@ -161,6 +162,9 @@ public class AdminController {
                     .map(Lawyer::getName).orElse(null));
             m.put("status", c.getStatus());
             m.put("reply", c.getReply());
+            m.put("appointmentTime", c.getAppointmentTime());
+            m.put("contactMethod", c.getContactMethod());
+            m.put("bookingNote", c.getBookingNote());
             m.put("repliedTime", c.getRepliedTime());
             m.put("createdTime", c.getCreatedTime());
             result.add(m);
@@ -174,6 +178,7 @@ public class AdminController {
         if (!checkAuth(token)) return authError();
         Consultation c = consultationRepository.findById(id).orElse(null);
         if (c == null) return ApiResponse.error("咨询不存在");
+        if (c.getLawyerId() != null) return ApiResponse.error("律师预约请使用预约处理接口");
         if (body == null) return ApiResponse.error("请求内容不能为空");
         if (body.containsKey("status")) c.setStatus(body.get("status"));
         consultationRepository.save(c);
@@ -185,6 +190,20 @@ public class AdminController {
             }
         }
         return ApiResponse.success("操作成功", null);
+    }
+
+    @PutMapping("/consultations/{id}/booking")
+    public ApiResponse<Map<String, Object>> updateBooking(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @PathVariable Long id, @RequestBody BookingUpdateRequest body) {
+        if (!checkAuth(token)) return authError();
+        try {
+            Map<String, Object> result = consultationService.updateBooking(id, body);
+            consultationChatHub.broadcast(id, (Map<String, Object>) result.get("message"));
+            return ApiResponse.success("预约处理已更新", result);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
     }
 
     @GetMapping("/consultations/{id}/messages")
