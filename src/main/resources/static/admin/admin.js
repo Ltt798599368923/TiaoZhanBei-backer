@@ -67,7 +67,7 @@
       return;
     }
     const list = await request('/consultations');
-    area.innerHTML = `<div class="toolbar"><h2>咨询处理</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['标题', '类型', '联系方式', '提交时间', '状态', '会话'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.content)}</div></td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.phone || '-')}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><button class="secondary" onclick="adminApp.openConsultation(${item.id})">打开会话</button></td></tr>`)}`;
+    area.innerHTML = `<div class="toolbar"><h2>咨询处理</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['标题', '类型', '指定律师', '联系方式', '提交时间', '状态', '会话'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.content)}</div></td><td>${escapeHtml(item.type)}</td><td>${item.lawyerId ? escapeHtml(item.lawyerName || ('律师 #' + item.lawyerId)) : '-'}</td><td>${escapeHtml(item.phone || '-')}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><button class="secondary" onclick="adminApp.openConsultation(${item.id})">${item.lawyerId ? '处理预约' : '打开会话'}</button></td></tr>`)}`;
   }
 
   const chatMessageHtml = message => `<div class="consult-chat-message ${message.senderRole === 'admin' ? 'outgoing' : 'incoming'}"><div class="consult-chat-role">${message.senderRole === 'admin' ? '管理台' : '用户'} · ${formatTime(message.createdTime)}</div><div class="consult-chat-bubble">${escapeHtml(message.content)}</div></div>`;

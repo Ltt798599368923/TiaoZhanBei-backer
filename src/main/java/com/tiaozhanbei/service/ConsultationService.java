@@ -48,6 +48,7 @@ public class ConsultationService {
             map.put("phone", cons.getPhone());
             map.put("type", cons.getType());
             map.put("lawyerId", cons.getLawyerId());
+            map.put("lawyerName", getLawyerName(cons.getLawyerId()));
             map.put("status", cons.getStatus());
             map.put("reply", cons.getReply());
             map.put("repliedTime", cons.getRepliedTime() == null ? null : cons.getRepliedTime().format(DATE_FORMATTER));
@@ -140,6 +141,14 @@ public class ConsultationService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String getLawyerName(Long lawyerId) {
+        if (lawyerId == null) return null;
+        return lawyerRepository.findById(lawyerId)
+                .filter(lawyer -> !Boolean.TRUE.equals(lawyer.getIsDeleted()))
+                .map(Lawyer::getName)
+                .orElse(null);
     }
 
     public Consultation getConsultationById(Long userId, Long consultationId) {

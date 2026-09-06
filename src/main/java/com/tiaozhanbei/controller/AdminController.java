@@ -32,6 +32,7 @@ public class AdminController {
 
     @Autowired private UserRepository userRepository;
     @Autowired private ConsultationRepository consultationRepository;
+    @Autowired private LawyerRepository lawyerRepository;
     @Autowired private ContractRepository contractRepository;
     @Autowired private DocumentTemplateRepository documentTemplateRepository;
     @Autowired private FavoriteRepository favoriteRepository;
@@ -155,6 +156,9 @@ public class AdminController {
             m.put("phone", c.getPhone());
             m.put("type", c.getType());
             m.put("lawyerId", c.getLawyerId());
+            m.put("lawyerName", c.getLawyerId() == null ? null : lawyerRepository.findById(c.getLawyerId())
+                    .filter(lawyer -> !Boolean.TRUE.equals(lawyer.getIsDeleted()))
+                    .map(Lawyer::getName).orElse(null));
             m.put("status", c.getStatus());
             m.put("reply", c.getReply());
             m.put("repliedTime", c.getRepliedTime());
