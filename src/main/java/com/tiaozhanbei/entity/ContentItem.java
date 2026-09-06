@@ -1,5 +1,7 @@
 package com.tiaozhanbei.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -30,6 +32,13 @@ public class ContentItem {
 
     @Column(name = "cover_url", length = 1000)
     private String coverUrl;
+
+    @Column(name = "file_name", length = 300)
+    private String fileName;
+
+    @JsonIgnore
+    @Column(name = "file_path", length = 1000)
+    private String filePath;
 
     @Column(name = "published_time")
     private LocalDateTime publishedTime;
@@ -64,6 +73,10 @@ public class ContentItem {
     public void setSourceUrl(String sourceUrl) { this.sourceUrl = sourceUrl; }
     public String getCoverUrl() { return coverUrl; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getFilePath() { return filePath; }
+    public void setFilePath(String filePath) { this.filePath = filePath; }
     public LocalDateTime getPublishedTime() { return publishedTime; }
     public void setPublishedTime(LocalDateTime publishedTime) { this.publishedTime = publishedTime; }
     public LocalDateTime getCreatedTime() { return createdTime; }

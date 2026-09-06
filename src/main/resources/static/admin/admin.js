@@ -111,7 +111,7 @@
     area.innerHTML = `<div class="toolbar"><h2>合同审核</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['合同', '用户', '提交时间', '状态', '审核'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.fileName || '无附件')}</div></td><td>${item.userId}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><div class="row-actions">${item.fileName ? `<button class="secondary" onclick="adminApp.downloadContract(${item.id})">下载原件</button>` : ''}</div><select id="contract-status-${item.id}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>待审核</option><option value="processing" ${item.status === 'processing' ? 'selected' : ''}>审核中</option><option value="reviewed" ${item.status === 'reviewed' ? 'selected' : ''}>已完成</option><option value="rejected" ${item.status === 'rejected' ? 'selected' : ''}>需补充</option></select><textarea id="contract-review-${item.id}" placeholder="填写真实审核结论">${escapeHtml(item.reviewResult || '')}</textarea><button onclick="adminApp.saveContract(${item.id})">保存审核结果</button></td></tr>`)}`;
   }
 
-  const contentForm = item => `<div class="panel"><h3>${item ? '编辑内容' : '发布内容'}</h3><form id="content-form"><div class="form-grid"><label>类型<select name="contentType"><option value="article">普法文章</option><option value="law">法规动态</option><option value="book">法规阅读</option><option value="video">视频</option></select></label><label>标题<input name="title" required value="${escapeHtml(item?.title || '')}"></label><label class="full">摘要<textarea name="summary">${escapeHtml(item?.summary || '')}</textarea></label><label class="full">正文<textarea name="content">${escapeHtml(item?.content || '')}</textarea></label><label>来源名称<input name="sourceName" value="${escapeHtml(item?.sourceName || '')}"></label><label>来源链接<input name="sourceUrl" type="url" value="${escapeHtml(item?.sourceUrl || '')}"></label><label>封面链接<input name="coverUrl" type="url" value="${escapeHtml(item?.coverUrl || '')}"></label><label>发布状态<select name="isPublished"><option value="true">发布</option><option value="false">保存为未发布</option></select></label></div><div class="form-actions"><button type="submit">${item ? '保存修改' : '发布内容'}</button>${item ? '<button type="button" class="secondary" onclick="adminApp.cancelContentEdit()">取消</button>' : ''}</div></form></div>`;
+  const contentForm = item => `<div class="panel"><h3>${item ? '编辑内容' : '发布内容'}</h3><form id="content-form"><div class="form-grid"><label>类型<select name="contentType"><option value="article">普法文章</option><option value="law">法规动态</option><option value="book">法规阅读</option><option value="video">视频</option></select></label><label>标题<input name="title" required value="${escapeHtml(item?.title || '')}"></label><label class="full">摘要<textarea name="summary">${escapeHtml(item?.summary || '')}</textarea></label><label class="full">正文<textarea name="content">${escapeHtml(item?.content || '')}</textarea></label><label>来源名称<input name="sourceName" value="${escapeHtml(item?.sourceName || '')}"></label><label>来源链接<input name="sourceUrl" type="url" value="${escapeHtml(item?.sourceUrl || '')}"></label><label>封面链接<input name="coverUrl" type="url" value="${escapeHtml(item?.coverUrl || '')}"></label><label>内容附件<input name="file" type="file" accept=".pdf,.doc,.docx,.txt"><span class="field-hint">书籍可上传 PDF、DOC、DOCX、TXT，最大 10MB${item?.fileName ? `；当前：${escapeHtml(item.fileName)}` : ''}</span></label><label>发布状态<select name="isPublished"><option value="true">发布</option><option value="false">保存为未发布</option></select></label></div><div class="form-actions"><button type="submit">${item ? '保存修改' : '发布内容'}</button>${item ? '<button type="button" class="secondary" onclick="adminApp.cancelContentEdit()">取消</button>' : ''}</div></form></div>`;
   async function renderContent() {
     const type = state.contentType || 'article';
     const list = await request(`/content?type=${type}`);
@@ -146,7 +146,25 @@
 
   const table = (items, headings, row) => items.length ? `<div class="table-wrap"><table><thead><tr>${headings.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${items.map(row).join('')}</tbody></table></div>` : '<div class="panel empty">暂无数据</div>';
   const jsonForm = formData => Object.fromEntries([...formData.entries()].map(([key, value]) => [key, value instanceof File ? value : value.trim()]));
-  const saveContent = async formData => { const data = jsonForm(formData); data.isPublished = data.isPublished === 'true'; try { state.content ? await request(`/content/${state.content.id}`, { method: 'PUT', body: JSON.stringify(data) }) : await request('/content', { method: 'POST', body: JSON.stringify(data) }); state.content = null; render(); } catch (error) { showError(error); } };
+  const uploadContentFile = async (id, file) => {
+    const upload = new FormData();
+    upload.append('file', file);
+    const { response, body } = await requestJsonWithTimeout(`/api/admin/content/${id}/file`, { method: 'POST', headers: { 'X-Admin-Token': state.token }, body: upload });
+    if (!response.ok || !body || body.code !== 200) throw new Error((body && body.message) || '附件上传失败');
+    return body.data;
+  };
+  const saveContent = async formData => {
+    const data = jsonForm(formData);
+    const file = data.file;
+    delete data.file;
+    data.isPublished = data.isPublished === 'true';
+    try {
+      const saved = state.content ? await request(`/content/${state.content.id}`, { method: 'PUT', body: JSON.stringify(data) }) : await request('/content', { method: 'POST', body: JSON.stringify(data) });
+      if (file instanceof File && file.size) await uploadContentFile(saved.id, file);
+      state.content = null;
+      render();
+    } catch (error) { showError(error); }
+  };
   const uploadLawyerAvatar = async file => {
     const upload = new FormData();
     upload.append('file', file);

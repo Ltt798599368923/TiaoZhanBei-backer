@@ -106,6 +106,27 @@ public class AdminContentController {
         return ApiResponse.success("更新成功", contentItemRepository.save(item));
     }
 
+    @PostMapping(value = "/content/{id}/file", consumes = "multipart/form-data")
+    public ApiResponse<ContentItem> uploadContentFile(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        if (!authorized(token)) return forbidden();
+        ContentItem item = contentItemRepository.findById(id).orElse(null);
+        if (item == null || Boolean.TRUE.equals(item.getIsDeleted())) return ApiResponse.error("内容不存在");
+        try {
+            String storedPath = fileStorageService.store(file, "content");
+            String fileName = file.getOriginalFilename();
+            item.setFileName(isBlank(fileName) ? "内容附件" : fileName);
+            item.setFilePath(storedPath);
+            return ApiResponse.success("附件上传成功", contentItemRepository.save(item));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        } catch (Exception e) {
+            return ApiResponse.error("附件上传失败，请稍后重试");
+        }
+    }
+
     @DeleteMapping("/content/{id}")
     public ApiResponse<Void> deleteContent(@RequestHeader(value = "X-Admin-Token", required = false) String token,
                                             @PathVariable Long id) {
