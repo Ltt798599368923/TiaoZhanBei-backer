@@ -82,7 +82,7 @@
     form.onsubmit = event => { event.preventDefault(); saveContent(new FormData(form)); };
   }
 
-  const lawyerForm = item => `<div class="panel"><h3>${item ? '编辑律师' : '新增律师'}</h3><form id="lawyer-form"><div class="form-grid"><label>姓名<input name="name" required value="${escapeHtml(item?.name || '')}"></label><label>律所<input name="lawFirm" value="${escapeHtml(item?.lawFirm || '')}"></label><label>擅长领域<input name="specialties" value="${escapeHtml(item?.specialties || '')}"></label><label>头像链接<input name="avatarUrl" type="url" value="${escapeHtml(item?.avatarUrl || '')}"></label><label class="full">介绍<textarea name="introduction">${escapeHtml(item?.introduction || '')}</textarea></label><label>预约状态<select name="isAvailable"><option value="true">可预约</option><option value="false">暂停预约</option></select></label></div><div class="form-actions"><button type="submit">${item ? '保存修改' : '新增律师'}</button>${item ? '<button type="button" class="secondary" onclick="adminApp.cancelLawyerEdit()">取消</button>' : ''}</div></form></div>`;
+  const lawyerForm = item => `<div class="panel"><h3>${item ? '编辑律师' : '新增律师'}</h3><form id="lawyer-form"><div class="form-grid"><label>姓名<input name="name" required value="${escapeHtml(item?.name || '')}"></label><label>律所<input name="lawFirm" value="${escapeHtml(item?.lawFirm || '')}"></label><label>擅长领域<input name="specialties" value="${escapeHtml(item?.specialties || '')}"></label><label>上传头像（可选）<input name="avatarFile" type="file" accept="image/jpeg,image/png"><span class="field-hint">支持 JPG、PNG，最大 3MB</span></label><label>头像链接（备用）<input name="avatarUrl" type="url" value="${escapeHtml(item?.avatarUrl || '')}" placeholder="不上传时可填写外部图片链接"></label>${item?.avatarUrl ? `<div class="avatar-preview"><img src="${escapeHtml(item.avatarUrl)}" alt="当前头像"><span>当前头像</span></div>` : ''}<label class="full">介绍<textarea name="introduction">${escapeHtml(item?.introduction || '')}</textarea></label><label>预约状态<select name="isAvailable"><option value="true">可预约</option><option value="false">暂停预约</option></select></label></div><div class="form-actions"><button type="submit">${item ? '保存修改' : '新增律师'}</button>${item ? '<button type="button" class="secondary" onclick="adminApp.cancelLawyerEdit()">取消</button>' : ''}</div></form></div>`;
   async function renderLawyers() {
     const list = await request('/lawyers');
     area.innerHTML = `<div class="toolbar"><h2>律师管理</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${lawyerForm(state.lawyer)}${table(list, ['律师', '律所', '领域', '状态', '操作'], item => `<tr><td><strong>${escapeHtml(item.name)}</strong><div class="muted">${escapeHtml(item.introduction || '')}</div></td><td>${escapeHtml(item.lawFirm || '-')}</td><td>${escapeHtml(item.specialties || '-')}</td><td>${status(item.isAvailable ? '可预约' : '暂停')}</td><td><div class="row-actions"><button class="secondary" onclick="adminApp.editLawyer(${item.id})">编辑</button><button class="danger" onclick="adminApp.deleteLawyer(${item.id})">删除</button></div></td></tr>`)}`;
@@ -106,7 +106,25 @@
   const table = (items, headings, row) => items.length ? `<div class="table-wrap"><table><thead><tr>${headings.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${items.map(row).join('')}</tbody></table></div>` : '<div class="panel empty">暂无数据</div>';
   const jsonForm = formData => Object.fromEntries([...formData.entries()].map(([key, value]) => [key, value instanceof File ? value : value.trim()]));
   const saveContent = async formData => { const data = jsonForm(formData); data.isPublished = data.isPublished === 'true'; try { state.content ? await request(`/content/${state.content.id}`, { method: 'PUT', body: JSON.stringify(data) }) : await request('/content', { method: 'POST', body: JSON.stringify(data) }); state.content = null; render(); } catch (error) { showError(error); } };
-  const saveLawyer = async formData => { const data = jsonForm(formData); data.isAvailable = data.isAvailable === 'true'; try { state.lawyer ? await request(`/lawyers/${state.lawyer.id}`, { method: 'PUT', body: JSON.stringify(data) }) : await request('/lawyers', { method: 'POST', body: JSON.stringify(data) }); state.lawyer = null; render(); } catch (error) { showError(error); } };
+  const uploadLawyerAvatar = async file => {
+    const upload = new FormData();
+    upload.append('file', file);
+    const { response, body } = await requestJsonWithTimeout('/api/admin/lawyers/avatar', { method: 'POST', body: upload });
+    if (!response.ok || !body || body.code !== 200 || !body.data?.url) throw new Error((body && body.message) || '头像上传失败');
+    return body.data.url;
+  };
+  const saveLawyer = async formData => {
+    const data = jsonForm(formData);
+    const avatarFile = data.avatarFile;
+    delete data.avatarFile;
+    data.isAvailable = data.isAvailable === 'true';
+    try {
+      if (avatarFile instanceof File && avatarFile.size) data.avatarUrl = await uploadLawyerAvatar(avatarFile);
+      state.lawyer ? await request(`/lawyers/${state.lawyer.id}`, { method: 'PUT', body: JSON.stringify(data) }) : await request('/lawyers', { method: 'POST', body: JSON.stringify(data) });
+      state.lawyer = null;
+      render();
+    } catch (error) { showError(error); }
+  };
   const saveTemplate = async formData => { try { const file = formData.get('file'); if (file && file.size) { const response = await fetch('/api/admin/templates/upload', { method: 'POST', headers: { 'X-Admin-Token': state.token }, body: formData }); const body = await response.json(); if (!response.ok || body.code !== 200) throw new Error(body.message || '上传失败'); } else { const data = jsonForm(formData); delete data.file; await request('/templates', { method: 'POST', body: JSON.stringify(data) }); } render(); } catch (error) { showError(error); } };
   const saveNotice = async formData => { try { await request('/notices', { method: 'POST', body: JSON.stringify(jsonForm(formData)) }); render(); } catch (error) { showError(error); } };
 

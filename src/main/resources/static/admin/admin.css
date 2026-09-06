@@ -12,6 +12,9 @@ h2 { font-size: 20px; margin-bottom: 20px; }
 h3 { font-size: 16px; margin-bottom: 10px; }
 p { color: #666; line-height: 1.6; }
 label { display: grid; gap: 8px; margin: 24px 0 16px; color: #444; font-size: 14px; }
+.field-hint { color: #8c8c8c; font-size: 12px; }
+.avatar-preview { display: flex; align-items: center; gap: 10px; margin: 24px 0 16px; color: #595959; font-size: 13px; }
+.avatar-preview img { width: 48px; height: 48px; border: 1px solid #e7e8ea; border-radius: 50%; object-fit: cover; }
 input, select, textarea { width: 100%; border: 1px solid #d9d9d9; border-radius: 6px; padding: 10px 12px; background: #fff; color: #262626; }
 textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
 button { border: 0; border-radius: 6px; padding: 10px 16px; background: #c0190e; color: #fff; }

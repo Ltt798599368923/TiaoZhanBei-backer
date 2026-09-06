@@ -27,6 +27,8 @@ public class FileStorageService {
     private static final Set<String> ALLOWED_EXTENSIONS = new HashSet<>(Arrays.asList(
             "pdf", "doc", "docx", "txt", "jpg", "jpeg", "png"
     ));
+    private static final Set<String> IMAGE_EXTENSIONS = new HashSet<>(Arrays.asList("jpg", "jpeg", "png"));
+    private static final long MAX_AVATAR_SIZE = 3 * 1024 * 1024;
 
     @Value("${file.upload.dir:./uploads}")
     private String uploadDir;
@@ -52,6 +54,47 @@ public class FileStorageService {
         Path destination = directory.resolve(UUID.randomUUID() + "." + extension).normalize();
         Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
         return destination.toString();
+    }
+
+    /** Stores a lawyer avatar in a dedicated, publicly readable directory. */
+    public String storeAvatar(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("请选择头像图片");
+        }
+        if (file.getSize() > MAX_AVATAR_SIZE) {
+            throw new IllegalArgumentException("头像图片不能超过 3MB");
+        }
+
+        String extension = extensionOf(file.getOriginalFilename());
+        if (!IMAGE_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("头像仅支持 JPG、JPEG、PNG 图片");
+        }
+
+        Path root = uploadRoot();
+        Path directory = root.resolve("avatars").normalize();
+        Files.createDirectories(directory);
+        Path destination = directory.resolve(UUID.randomUUID() + "." + extension).normalize();
+        Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+        return destination.toString();
+    }
+
+    public ResponseEntity<Resource> avatar(String fileName) throws IOException {
+        if (isBlank(fileName) || !fileName.matches("[a-f0-9-]{36}\\.(jpg|jpeg|png)")) {
+            throw new IllegalArgumentException("头像不存在");
+        }
+        Path root = uploadRoot();
+        Path file = root.resolve("avatars").resolve(fileName).normalize();
+        if (!file.startsWith(root.resolve("avatars")) || !Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("头像不存在");
+        }
+
+        String extension = extensionOf(fileName);
+        MediaType mediaType = "png".equals(extension) ? MediaType.IMAGE_PNG : MediaType.IMAGE_JPEG;
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename(fileName).build().toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(new FileSystemResource(file));
     }
 
     public ResponseEntity<Resource> download(String storedPath, String downloadName) throws IOException {

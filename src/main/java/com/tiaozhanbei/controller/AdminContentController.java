@@ -5,6 +5,7 @@ import com.tiaozhanbei.entity.ContentItem;
 import com.tiaozhanbei.entity.Lawyer;
 import com.tiaozhanbei.repository.ContentItemRepository;
 import com.tiaozhanbei.repository.LawyerRepository;
+import com.tiaozhanbei.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -14,7 +15,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -26,10 +29,13 @@ public class AdminContentController {
 
     private final ContentItemRepository contentItemRepository;
     private final LawyerRepository lawyerRepository;
+    private final FileStorageService fileStorageService;
 
-    public AdminContentController(ContentItemRepository contentItemRepository, LawyerRepository lawyerRepository) {
+    public AdminContentController(ContentItemRepository contentItemRepository, LawyerRepository lawyerRepository,
+                                  FileStorageService fileStorageService) {
         this.contentItemRepository = contentItemRepository;
         this.lawyerRepository = lawyerRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     private boolean authorized(String token) {
@@ -135,6 +141,22 @@ public class AdminContentController {
         body.setIsDeleted(false);
         body.setCreatedTime(LocalDateTime.now());
         return ApiResponse.success("创建成功", lawyerRepository.save(body));
+    }
+
+    @PostMapping(value = "/lawyers/avatar", consumes = "multipart/form-data")
+    public ApiResponse<java.util.Map<String, String>> uploadLawyerAvatar(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        if (!authorized(token)) return forbidden();
+        try {
+            String storedPath = fileStorageService.storeAvatar(file);
+            String fileName = Paths.get(storedPath).getFileName().toString();
+            return ApiResponse.success("头像上传成功", Collections.singletonMap("url", "/api/files/avatars/" + fileName));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        } catch (Exception e) {
+            return ApiResponse.error("头像上传失败，请稍后重试");
+        }
     }
 
     @PutMapping("/lawyers/{id}")
