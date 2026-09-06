@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -71,6 +72,13 @@ public class ConsultationService {
             if (lawyer == null || Boolean.TRUE.equals(lawyer.getIsDeleted()) || !Boolean.TRUE.equals(lawyer.getIsAvailable())) {
                 throw new IllegalArgumentException("预约律师不存在或暂不可预约");
             }
+            if (!isValidMobile(request.getPhone())) {
+                throw new IllegalArgumentException("预约律师请填写正确的 11 位手机号码");
+            }
+            if (consultationRepository.existsByUserIdAndLawyerIdAndIsDeletedFalseAndStatusIn(
+                    userId, request.getLawyerId(), Arrays.asList("pending", "processing", "replied"))) {
+                throw new IllegalArgumentException("您已向该律师提交预约，请先等待处理结果");
+            }
         }
         Consultation consultation = new Consultation();
         consultation.setUserId(userId);
@@ -103,16 +111,23 @@ public class ConsultationService {
         if (!consultation.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权发送该咨询会话消息");
         }
-        ConsultationMessage message = saveMessage(consultationId, "user", content, null);
-        if (!"closed".equals(consultation.getStatus())) {
-            consultation.setStatus("pending");
-            consultationRepository.save(consultation);
+        if (consultation.getLawyerId() != null) {
+            throw new IllegalArgumentException("律师预约请等待平台反馈");
         }
+        if ("closed".equals(consultation.getStatus())) {
+            throw new IllegalArgumentException("该咨询会话已结束，请新建咨询");
+        }
+        ConsultationMessage message = saveMessage(consultationId, "user", content, null);
+        consultation.setStatus("pending");
+        consultationRepository.save(consultation);
         return toMessageMap(message);
     }
 
     public Map<String, Object> appendAdminMessage(Long consultationId, String content) {
         Consultation consultation = getActiveConsultation(consultationId);
+        if ("closed".equals(consultation.getStatus()) || "cancelled".equals(consultation.getStatus())) {
+            throw new IllegalArgumentException("该预约或咨询已结束，无法继续处理");
+        }
         ConsultationMessage message = saveMessage(consultationId, "admin", content, null);
         consultation.setReply(message.getContent());
         consultation.setRepliedTime(message.getCreatedTime());
@@ -130,6 +145,17 @@ public class ConsultationService {
         }
     }
 
+    public boolean userOwnsRealtimeConsultation(Long userId, Long consultationId) {
+        try {
+            Consultation consultation = getActiveConsultation(consultationId);
+            return consultation.getUserId().equals(userId)
+                    && consultation.getLawyerId() == null
+                    && !"closed".equals(consultation.getStatus());
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
     public boolean activeConsultationExists(Long consultationId) {
         try {
             getActiveConsultation(consultationId);
@@ -141,6 +167,10 @@ public class ConsultationService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private boolean isValidMobile(String value) {
+        return value != null && value.trim().matches("^1\\d{10}$");
     }
 
     private String getLawyerName(Long lawyerId) {
@@ -168,6 +198,20 @@ public class ConsultationService {
         }
 
         consultation.setIsDeleted(true);
+        consultationRepository.save(consultation);
+        return true;
+    }
+
+    public boolean cancelBooking(Long userId, Long consultationId) {
+        Consultation consultation = consultationRepository.findById(consultationId).orElse(null);
+        if (consultation == null || !consultation.getUserId().equals(userId)
+                || consultation.getLawyerId() == null || Boolean.TRUE.equals(consultation.getIsDeleted())) {
+            return false;
+        }
+        if ("closed".equals(consultation.getStatus()) || "cancelled".equals(consultation.getStatus())) {
+            throw new IllegalArgumentException("该预约已结束，无法取消");
+        }
+        consultation.setStatus("cancelled");
         consultationRepository.save(consultation);
         return true;
     }

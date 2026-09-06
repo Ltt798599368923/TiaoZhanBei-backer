@@ -67,7 +67,7 @@
       return;
     }
     const list = await request('/consultations');
-    area.innerHTML = `<div class="toolbar"><h2>咨询处理</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['标题', '类型', '指定律师', '联系方式', '提交时间', '状态', '会话'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.content)}</div></td><td>${escapeHtml(item.type)}</td><td>${item.lawyerId ? escapeHtml(item.lawyerName || ('律师 #' + item.lawyerId)) : '-'}</td><td>${escapeHtml(item.phone || '-')}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><button class="secondary" onclick="adminApp.openConsultation(${item.id})">${item.lawyerId ? '处理预约' : '打开会话'}</button></td></tr>`)}`;
+    area.innerHTML = `<div class="toolbar"><h2>咨询处理</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['标题', '类型', '指定律师', '联系方式', '提交时间', '状态', '会话'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.content)}</div></td><td>${escapeHtml(item.type)}</td><td>${item.lawyerId ? escapeHtml(item.lawyerName || ('律师 #' + item.lawyerId)) : '-'}</td><td>${escapeHtml(item.phone || '-')}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><button class="secondary" onclick="adminApp.openConsultation(${item.id}, ${item.lawyerId ? 'true' : 'false'}, '${item.status}')">${item.lawyerId ? '处理预约' : '打开会话'}</button></td></tr>`)}`;
   }
 
   const chatMessageHtml = message => `<div class="consult-chat-message ${message.senderRole === 'admin' ? 'outgoing' : 'incoming'}"><div class="consult-chat-role">${message.senderRole === 'admin' ? '管理台' : '用户'} · ${formatTime(message.createdTime)}</div><div class="consult-chat-bubble">${escapeHtml(message.content)}</div></div>`;
@@ -94,8 +94,11 @@
   };
   async function renderConsultationChat() {
     const consultationId = state.consultation.id;
+    const isBooking = Boolean(state.consultation.isBooking);
+    const isFinished = state.consultation.status === 'closed' || state.consultation.status === 'cancelled';
+    const closeButton = isBooking && !isFinished ? '<button class="secondary" onclick="adminApp.finishBooking()">结束预约</button>' : '';
     state.consultationMessages = await request(`/consultations/${consultationId}/messages`);
-    area.innerHTML = `<div class="toolbar"><div><button class="secondary" onclick="adminApp.closeConsultation()">返回列表</button><h2>咨询会话 #${consultationId}</h2></div><button class="secondary" onclick="adminApp.refreshConsultation()">刷新</button></div><div class="consult-chat-panel"><div class="consult-chat-thread" id="consult-chat-thread"></div><div class="consult-chat-composer"><textarea id="consult-chat-input" placeholder="输入处理回复，用户将即时收到"></textarea><button onclick="adminApp.sendConsultationMessage()">发送</button></div></div>`;
+    area.innerHTML = `<div class="toolbar"><div><button class="secondary" onclick="adminApp.closeConsultation()">返回列表</button><h2>${isBooking ? '律师预约处理' : '咨询会话'} #${consultationId}</h2></div><div>${closeButton}<button class="secondary" onclick="adminApp.refreshConsultation()">刷新</button></div></div><div class="consult-chat-panel"><div class="consult-chat-thread" id="consult-chat-thread"></div><div class="consult-chat-composer"><textarea id="consult-chat-input" placeholder="${isBooking ? '输入预约处理反馈，用户将在预约进度中查看' : '输入处理回复，用户将即时收到'}" ${isFinished ? 'disabled' : ''}></textarea><button onclick="adminApp.sendConsultationMessage()" ${isFinished ? 'disabled' : ''}>发送</button></div></div>`;
     renderConsultationMessages();
     connectConsultationSocket(consultationId);
   }
@@ -171,10 +174,11 @@
     cancelLawyerEdit: () => { state.lawyer = null; render(); },
     editContent: async id => { try { state.content = await request(`/content/${id}`); render(); } catch (error) { showError(error); } },
     editLawyer: async id => { try { state.lawyer = await request(`/lawyers/${id}`); render(); } catch (error) { showError(error); } },
-    openConsultation: id => { state.consultation = { id }; render(); },
+    openConsultation: (id, isBooking = false, status = 'pending') => { state.consultation = { id, isBooking, status }; render(); },
     closeConsultation: () => { if (consultationSocket) consultationSocket.close(); consultationSocket = null; state.consultation = null; state.consultationMessages = []; render(); },
     refreshConsultation: () => renderConsultationChat().catch(showError),
     sendConsultationMessage: async () => { const input = document.querySelector('#consult-chat-input'); const content = input ? input.value.trim() : ''; if (!content) return; try { const message = await request(`/consultations/${state.consultation.id}/messages`, { method: 'POST', body: JSON.stringify({ content }) }); if (input) input.value = ''; appendConsultationMessage(message); } catch (error) { showError(error); } },
+    finishBooking: async () => { if (!confirm('确认结束该律师预约？结束后用户可重新发起预约。')) return; try { await request(`/consultations/${state.consultation.id}`, { method: 'PUT', body: JSON.stringify({ status: 'closed' }) }); state.consultation.status = 'closed'; renderConsultationChat(); } catch (error) { showError(error); } },
     saveContract: async id => { try { await request(`/contracts/${id}`, { method: 'PUT', body: JSON.stringify({ status: document.querySelector(`#contract-status-${id}`).value, reviewResult: document.querySelector(`#contract-review-${id}`).value }) }); render(); } catch (error) { showError(error); } },
     deleteContent: async id => { if (confirm('确定删除这条内容？')) try { await request(`/content/${id}`, { method: 'DELETE' }); render(); } catch (error) { showError(error); } },
     deleteLawyer: async id => { if (confirm('确定删除该律师？')) try { await request(`/lawyers/${id}`, { method: 'DELETE' }); render(); } catch (error) { showError(error); } },

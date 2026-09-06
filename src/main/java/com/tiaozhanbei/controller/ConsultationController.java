@@ -115,4 +115,16 @@ public class ConsultationController {
             return ApiResponse.error("删除咨询失败: " + e.getMessage());
         }
     }
+
+    @PostMapping("/cancel/{userId}/{consultationId}")
+    public ApiResponse<Void> cancelBooking(@PathVariable Long userId, @PathVariable Long consultationId) {
+        try {
+            if (!consultationService.cancelBooking(userId, consultationId)) {
+                return ApiResponse.error("预约不存在或无权操作");
+            }
+            return ApiResponse.success("预约已取消", null);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(e.getMessage());
+        }
+    }
 }
