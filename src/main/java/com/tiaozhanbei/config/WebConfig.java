@@ -21,6 +21,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/ai/health",
                         "/api/admin/**",
                         "/api/content/**",
+                        "/api/files/avatars/**",
                         "/api/lawyer/**",
                         "/api/template/**",
                         "/api/notice/list",
