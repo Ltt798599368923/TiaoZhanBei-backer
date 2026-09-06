@@ -37,6 +37,8 @@ public class FavoriteService {
             map.put("description", fav.getDescription());
             map.put("time", fav.getCreatedTime().format(DATE_FORMATTER));
             map.put("icon", fav.getIcon());
+            map.put("contentType", fav.getContentType());
+            map.put("contentId", fav.getContentId());
             return map;
         }).collect(Collectors.toList());
     }
