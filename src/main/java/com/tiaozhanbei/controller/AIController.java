@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
+import java.util.Collections;
+
 @RestController
 @RequestMapping("/api/ai")
 public class AIController {
@@ -43,7 +46,11 @@ public class AIController {
         );
 
         if (aiResponse.getCode() == 200) {
-            return LawSearchResponse.success(null, aiResponse.getReply());
+            return LawSearchResponse.success(Collections.emptyList(), aiResponse.getReply(), Arrays.asList(
+                    new LawSearchResponse.OfficialSource("国家法律法规数据库", "核验现行法律、行政法规和部门规章", "https://flk.npc.gov.cn/"),
+                    new LawSearchResponse.OfficialSource("中国政府网", "核验国务院政策文件与行政法规", "https://www.gov.cn/"),
+                    new LawSearchResponse.OfficialSource("最高人民法院", "核验司法解释与审判指导信息", "https://www.court.gov.cn/")
+            ));
         } else {
             return LawSearchResponse.error(aiResponse.getMessage());
         }

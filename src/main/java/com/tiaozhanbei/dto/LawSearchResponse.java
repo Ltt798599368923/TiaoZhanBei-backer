@@ -5,6 +5,7 @@ import java.util.List;
 public class LawSearchResponse {
     private List<LawResult> results;
     private String aiAdvice;
+    private List<OfficialSource> officialSources;
     private Integer code;
     private String message;
 
@@ -19,6 +20,12 @@ public class LawSearchResponse {
 
     public static LawSearchResponse success(List<LawResult> results, String aiAdvice) {
         return new LawSearchResponse(200, "success", results, aiAdvice);
+    }
+
+    public static LawSearchResponse success(List<LawResult> results, String aiAdvice, List<OfficialSource> officialSources) {
+        LawSearchResponse response = new LawSearchResponse(200, "success", results, aiAdvice);
+        response.setOfficialSources(officialSources);
+        return response;
     }
 
     public static LawSearchResponse error(String message) {
@@ -40,6 +47,9 @@ public class LawSearchResponse {
     public void setAiAdvice(String aiAdvice) {
         this.aiAdvice = aiAdvice;
     }
+
+    public List<OfficialSource> getOfficialSources() { return officialSources; }
+    public void setOfficialSources(List<OfficialSource> officialSources) { this.officialSources = officialSources; }
 
     public Integer getCode() {
         return code;
@@ -93,5 +103,19 @@ public class LawSearchResponse {
         public void setContent(String content) {
             this.content = content;
         }
+    }
+
+    public static class OfficialSource {
+        private String name;
+        private String description;
+        private String url;
+        public OfficialSource() {}
+        public OfficialSource(String name, String description, String url) { this.name = name; this.description = description; this.url = url; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
     }
 }

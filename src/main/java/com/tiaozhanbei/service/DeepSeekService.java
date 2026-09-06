@@ -111,7 +111,7 @@ public class DeepSeekService {
 
     public ChatResponse searchLaws(String keyword, String category) {
         String searchPrompt = String.format(
-                "你是一个专业的法律顾问。请根据关键词'%s'搜索相关法律条文。%s请提供相关法条名称、条款号和内容摘要。",
+                "你是法律检索助手。用户查询关键词为'%s'。%s仅说明应检索的法律领域、关键词和核验要点，不得编造或引用具体法条、条款号、发布日期或法律效力。请提醒用户以国家法律法规数据库等官方来源核验。",
                 keyword,
                 category != null && !category.isEmpty() ? "限定分类：" + category : ""
         );
