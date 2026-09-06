@@ -40,8 +40,7 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         if ("user".equals(role)) {
-            String token = uri.getQueryParams().getFirst("token");
-            Optional<Long> userId = userSessionService.resolveUserId("Bearer " + (token == null ? "" : token));
+            Optional<Long> userId = userSessionService.resolveUserId(request.getHeaders().getFirst("Authorization"));
             if (!userId.isPresent() || !consultationService.userOwnsActiveConsultation(userId.get(), consultationId)) {
                 return false;
             }
