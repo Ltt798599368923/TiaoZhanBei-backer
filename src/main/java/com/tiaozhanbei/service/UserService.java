@@ -36,11 +36,11 @@ public class UserService {
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
-            if (request.getNickname() != null || request.getAvatar() != null) {
-                if (request.getNickname() != null) {
+            if (isBlank(user.getNickname()) || isBlank(user.getAvatar())) {
+                if (isBlank(user.getNickname()) && !isBlank(request.getNickname())) {
                     user.setNickname(request.getNickname());
                 }
-                if (request.getAvatar() != null) {
+                if (isBlank(user.getAvatar()) && !isBlank(request.getAvatar())) {
                     user.setAvatar(request.getAvatar());
                 }
                 user = userRepository.save(user);
@@ -69,6 +69,10 @@ public class UserService {
         return userRepository.findById(userId).orElse(null);
     }
 
+    public User save(User user) {
+        return userRepository.save(user);
+    }
+
     public User updateUser(Long userId, String nickname, String avatar, String phone) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {
@@ -87,5 +91,9 @@ public class UserService {
         }
 
         return userRepository.save(user);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

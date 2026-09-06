@@ -50,6 +50,7 @@
       if (state.tab === 'lawyers') await renderLawyers();
       if (state.tab === 'templates') await renderTemplates();
       if (state.tab === 'notices') await renderNotices();
+      if (state.tab === 'feedbacks') await renderFeedbacks();
     } catch (error) {
       area.innerHTML = `<div class="panel"><p class="form-message">${escapeHtml(error.message)}</p></div>`;
     }
@@ -144,6 +145,11 @@
     document.querySelector('#notice-form').onsubmit = event => { event.preventDefault(); saveNotice(new FormData(event.currentTarget)); };
   }
 
+  async function renderFeedbacks() {
+    const list = await request('/feedbacks');
+    area.innerHTML = `<div class="toolbar"><h2>意见反馈</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['用户', '反馈内容', '提交时间', '处理'], item => `<tr><td>${item.userId}</td><td>${escapeHtml(item.content)}</td><td>${formatTime(item.createdTime)}</td><td><select id="feedback-status-${item.id}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>待处理</option><option value="processing" ${item.status === 'processing' ? 'selected' : ''}>处理中</option><option value="resolved" ${item.status === 'resolved' ? 'selected' : ''}>已解决</option></select><textarea id="feedback-reply-${item.id}" placeholder="填写回复，用户将在消息中心看到">${escapeHtml(item.reply || '')}</textarea><button onclick="adminApp.saveFeedback(${item.id})">保存处理结果</button></td></tr>`)}`;
+  }
+
   const table = (items, headings, row) => items.length ? `<div class="table-wrap"><table><thead><tr>${headings.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${items.map(row).join('')}</tbody></table></div>` : '<div class="panel empty">暂无数据</div>';
   const jsonForm = formData => Object.fromEntries([...formData.entries()].map(([key, value]) => [key, value instanceof File ? value : value.trim()]));
   const uploadContentFile = async (id, file) => {
@@ -201,6 +207,7 @@
     sendConsultationMessage: async () => { const input = document.querySelector('#consult-chat-input'); const content = input ? input.value.trim() : ''; if (!content) return; try { const message = await request(`/consultations/${state.consultation.id}/messages`, { method: 'POST', body: JSON.stringify({ content }) }); if (input) input.value = ''; appendConsultationMessage(message); } catch (error) { showError(error); } },
     saveBooking: async () => { const status = document.querySelector('#booking-status').value; const appointmentTime = document.querySelector('#booking-time').value; const contactMethod = document.querySelector('#booking-contact').value.trim(); const bookingNote = document.querySelector('#booking-note').value.trim(); try { const result = await request(`/consultations/${state.consultation.id}/booking`, { method: 'PUT', body: JSON.stringify({ status, appointmentTime, contactMethod, bookingNote }) }); state.consultation = { ...state.consultation, ...result.consultation }; await renderConsultationChat(); } catch (error) { showError(error); } },
     saveContract: async id => { try { await request(`/contracts/${id}`, { method: 'PUT', body: JSON.stringify({ status: document.querySelector(`#contract-status-${id}`).value, reviewResult: document.querySelector(`#contract-review-${id}`).value }) }); render(); } catch (error) { showError(error); } },
+    saveFeedback: async id => { try { await request(`/feedbacks/${id}`, { method: 'PUT', body: JSON.stringify({ status: document.querySelector(`#feedback-status-${id}`).value, reply: document.querySelector(`#feedback-reply-${id}`).value.trim() }) }); render(); } catch (error) { showError(error); } },
     deleteContent: async id => { if (confirm('确定删除这条内容？')) try { await request(`/content/${id}`, { method: 'DELETE' }); render(); } catch (error) { showError(error); } },
     deleteLawyer: async id => { if (confirm('确定删除该律师？')) try { await request(`/lawyers/${id}`, { method: 'DELETE' }); render(); } catch (error) { showError(error); } },
     deleteTemplate: async id => { if (confirm('确定删除该模板？')) try { await request(`/templates/${id}`, { method: 'DELETE' }); render(); } catch (error) { showError(error); } },

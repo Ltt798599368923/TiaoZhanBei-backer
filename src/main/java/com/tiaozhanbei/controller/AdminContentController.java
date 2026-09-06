@@ -2,9 +2,13 @@ package com.tiaozhanbei.controller;
 
 import com.tiaozhanbei.dto.ApiResponse;
 import com.tiaozhanbei.entity.ContentItem;
+import com.tiaozhanbei.entity.Feedback;
 import com.tiaozhanbei.entity.Lawyer;
+import com.tiaozhanbei.entity.SystemNotice;
 import com.tiaozhanbei.repository.ContentItemRepository;
+import com.tiaozhanbei.repository.FeedbackRepository;
 import com.tiaozhanbei.repository.LawyerRepository;
+import com.tiaozhanbei.repository.SystemNoticeRepository;
 import com.tiaozhanbei.service.FileStorageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -29,12 +33,17 @@ public class AdminContentController {
 
     private final ContentItemRepository contentItemRepository;
     private final LawyerRepository lawyerRepository;
+    private final FeedbackRepository feedbackRepository;
+    private final SystemNoticeRepository systemNoticeRepository;
     private final FileStorageService fileStorageService;
 
     public AdminContentController(ContentItemRepository contentItemRepository, LawyerRepository lawyerRepository,
+                                  FeedbackRepository feedbackRepository, SystemNoticeRepository systemNoticeRepository,
                                   FileStorageService fileStorageService) {
         this.contentItemRepository = contentItemRepository;
         this.lawyerRepository = lawyerRepository;
+        this.feedbackRepository = feedbackRepository;
+        this.systemNoticeRepository = systemNoticeRepository;
         this.fileStorageService = fileStorageService;
     }
 
@@ -136,6 +145,35 @@ public class AdminContentController {
         item.setIsDeleted(true);
         contentItemRepository.save(item);
         return ApiResponse.success("删除成功", null);
+    }
+
+    @GetMapping("/feedbacks")
+    public ApiResponse<List<Feedback>> feedbacks(@RequestHeader(value = "X-Admin-Token", required = false) String token) {
+        if (!authorized(token)) return forbidden();
+        return ApiResponse.success(feedbackRepository.findByIsDeletedFalseOrderByCreatedTimeDesc());
+    }
+
+    @PutMapping("/feedbacks/{id}")
+    public ApiResponse<Feedback> updateFeedback(@RequestHeader(value = "X-Admin-Token", required = false) String token,
+                                                @PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        if (!authorized(token)) return forbidden();
+        Feedback feedback = feedbackRepository.findById(id).orElse(null);
+        if (feedback == null || Boolean.TRUE.equals(feedback.getIsDeleted())) return ApiResponse.error("反馈不存在");
+        String status = body == null ? null : body.get("status");
+        if (status != null && !Arrays.asList("pending", "processing", "resolved").contains(status)) return ApiResponse.error("不支持的处理状态");
+        if (status != null) feedback.setStatus(status);
+        String previousReply = feedback.getReply();
+        if (body != null && body.containsKey("reply")) feedback.setReply(body.get("reply"));
+        feedback = feedbackRepository.save(feedback);
+        if (feedback.getReply() != null && !feedback.getReply().trim().isEmpty() && !feedback.getReply().equals(previousReply)) {
+            SystemNotice notice = new SystemNotice();
+            notice.setUserId(feedback.getUserId());
+            notice.setTitle("意见反馈已回复");
+            notice.setContent(feedback.getReply());
+            notice.setNoticeType("feedback_reply");
+            systemNoticeRepository.save(notice);
+        }
+        return ApiResponse.success("反馈处理已更新", feedback);
     }
 
     @GetMapping("/lawyers")

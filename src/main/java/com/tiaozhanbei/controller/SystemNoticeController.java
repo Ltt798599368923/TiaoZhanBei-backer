@@ -3,6 +3,7 @@ package com.tiaozhanbei.controller;
 import com.tiaozhanbei.dto.ApiResponse;
 import com.tiaozhanbei.entity.SystemNotice;
 import com.tiaozhanbei.repository.SystemNoticeRepository;
+import com.tiaozhanbei.repository.UserRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,9 +18,11 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/notice")
 public class SystemNoticeController {
     private final SystemNoticeRepository systemNoticeRepository;
+    private final UserRepository userRepository;
 
-    public SystemNoticeController(SystemNoticeRepository systemNoticeRepository) {
+    public SystemNoticeController(SystemNoticeRepository systemNoticeRepository, UserRepository userRepository) {
         this.systemNoticeRepository = systemNoticeRepository;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/list")
@@ -43,7 +46,11 @@ public class SystemNoticeController {
 
     @GetMapping("/user/{userId}")
     public ApiResponse<List<Map<String, Object>>> getUserNotices(@PathVariable Long userId) {
+        boolean acceptsSystemNotices = userRepository.findById(userId)
+                .map(user -> !Boolean.FALSE.equals(user.getNotificationEnabled()))
+                .orElse(true);
         return ApiResponse.success(systemNoticeRepository.findVisibleToUser(userId).stream()
+                .filter(notice -> notice.getUserId() != null || acceptsSystemNotices)
                 .map(this::toSummary)
                 .collect(Collectors.toList()));
     }

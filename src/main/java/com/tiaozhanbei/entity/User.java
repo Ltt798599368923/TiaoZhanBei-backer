@@ -22,6 +22,9 @@ public class User {
     @Column(length = 20)
     private String phone;
 
+    @Column(name = "notification_enabled")
+    private Boolean notificationEnabled = true;
+
     @Column(name = "created_time")
     private LocalDateTime createdTime;
 
@@ -81,6 +84,9 @@ public class User {
     public void setPhone(String phone) {
         this.phone = phone;
     }
+
+    public Boolean getNotificationEnabled() { return notificationEnabled; }
+    public void setNotificationEnabled(Boolean notificationEnabled) { this.notificationEnabled = notificationEnabled; }
 
     public LocalDateTime getCreatedTime() {
         return createdTime;
