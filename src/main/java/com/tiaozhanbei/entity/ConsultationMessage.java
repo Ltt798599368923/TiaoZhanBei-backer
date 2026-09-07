@@ -28,6 +28,9 @@ public class ConsultationMessage {
     @Column(name = "created_time", nullable = false)
     private LocalDateTime createdTime;
 
+    @Column(name = "read_by_user")
+    private Boolean readByUser = false;
+
     @PrePersist
     protected void onCreate() {
         if (createdTime == null) createdTime = LocalDateTime.now();
@@ -43,4 +46,6 @@ public class ConsultationMessage {
     public void setContent(String content) { this.content = content; }
     public LocalDateTime getCreatedTime() { return createdTime; }
     public void setCreatedTime(LocalDateTime createdTime) { this.createdTime = createdTime; }
+    public Boolean getReadByUser() { return readByUser; }
+    public void setReadByUser(Boolean readByUser) { this.readByUser = readByUser; }
 }

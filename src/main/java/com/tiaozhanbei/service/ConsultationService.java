@@ -44,6 +44,12 @@ public class ConsultationService {
         List<Consultation> consultations = consultationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedTimeDesc(userId);
         
         return consultations.stream().map(cons -> {
+            List<ConsultationMessage> messages = getMessageEntities(cons);
+            ConsultationMessage latestMessage = messages.isEmpty() ? null : messages.get(messages.size() - 1);
+            long unreadCount = messages.stream()
+                    .filter(message -> "admin".equals(message.getSenderRole()))
+                    .filter(message -> !Boolean.TRUE.equals(message.getReadByUser()))
+                    .count();
             Map<String, Object> map = new HashMap<>();
             map.put("id", cons.getId());
             map.put("title", cons.getTitle());
@@ -59,6 +65,10 @@ public class ConsultationService {
             map.put("bookingNote", cons.getBookingNote());
             map.put("repliedTime", cons.getRepliedTime() == null ? null : cons.getRepliedTime().format(DATE_FORMATTER));
             map.put("time", cons.getCreatedTime().format(DATE_FORMATTER));
+            map.put("latestMessage", latestMessage == null ? null : latestMessage.getContent());
+            map.put("latestSenderRole", latestMessage == null ? null : latestMessage.getSenderRole());
+            map.put("latestMessageTime", latestMessage == null ? null : latestMessage.getCreatedTime().format(DATE_FORMATTER));
+            map.put("unreadCount", unreadCount);
             return map;
         }).collect(Collectors.toList());
     }
@@ -104,7 +114,9 @@ public class ConsultationService {
         if (!consultation.getUserId().equals(userId)) {
             throw new IllegalArgumentException("无权查看该咨询会话");
         }
-        return getMessages(consultation);
+        List<Map<String, Object>> messages = getMessages(consultation);
+        markAdminMessagesRead(consultation.getId());
+        return messages;
     }
 
     public List<Map<String, Object>> getMessagesForAdmin(Long consultationId) {
@@ -311,6 +323,10 @@ public class ConsultationService {
     }
 
     private List<Map<String, Object>> getMessages(Consultation consultation) {
+        return getMessageEntities(consultation).stream().map(this::toMessageMap).collect(Collectors.toList());
+    }
+
+    private List<ConsultationMessage> getMessageEntities(Consultation consultation) {
         List<ConsultationMessage> messages = consultationMessageRepository
                 .findByConsultationIdOrderByCreatedTimeAsc(consultation.getId());
         if (messages.isEmpty()) {
@@ -322,7 +338,19 @@ public class ConsultationService {
             }
             messages = consultationMessageRepository.findByConsultationIdOrderByCreatedTimeAsc(consultation.getId());
         }
-        return messages.stream().map(this::toMessageMap).collect(Collectors.toList());
+        return messages;
+    }
+
+    private void markAdminMessagesRead(Long consultationId) {
+        List<ConsultationMessage> unreadMessages = consultationMessageRepository
+                .findByConsultationIdOrderByCreatedTimeAsc(consultationId)
+                .stream()
+                .filter(message -> "admin".equals(message.getSenderRole()))
+                .filter(message -> !Boolean.TRUE.equals(message.getReadByUser()))
+                .collect(Collectors.toList());
+        if (unreadMessages.isEmpty()) return;
+        unreadMessages.forEach(message -> message.setReadByUser(true));
+        consultationMessageRepository.saveAll(unreadMessages);
     }
 
     private ConsultationMessage saveMessage(Long consultationId, String senderRole, String content, java.time.LocalDateTime createdTime) {
@@ -344,6 +372,7 @@ public class ConsultationService {
         result.put("senderRole", message.getSenderRole());
         result.put("content", message.getContent());
         result.put("createdTime", message.getCreatedTime().format(DATE_FORMATTER));
+        result.put("readByUser", Boolean.TRUE.equals(message.getReadByUser()));
         return result;
     }
 
