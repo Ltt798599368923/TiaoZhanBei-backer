@@ -157,19 +157,23 @@ public class AdminContentController {
     public ApiResponse<Feedback> updateFeedback(@RequestHeader(value = "X-Admin-Token", required = false) String token,
                                                 @PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         if (!authorized(token)) return forbidden();
+        if (body == null) return ApiResponse.error("请求内容不能为空");
         Feedback feedback = feedbackRepository.findById(id).orElse(null);
         if (feedback == null || Boolean.TRUE.equals(feedback.getIsDeleted())) return ApiResponse.error("反馈不存在");
-        String status = body == null ? null : body.get("status");
+        String status = body.getOrDefault("status", feedback.getStatus());
         if (status != null && !Arrays.asList("pending", "processing", "resolved").contains(status)) return ApiResponse.error("不支持的处理状态");
-        if (status != null) feedback.setStatus(status);
         String previousReply = feedback.getReply();
-        if (body != null && body.containsKey("reply")) feedback.setReply(body.get("reply"));
+        String reply = body.containsKey("reply") ? body.get("reply") : previousReply;
+        reply = reply == null ? "" : reply.trim();
+        if (reply.length() > 2000) return ApiResponse.error("回复不能超过 2000 字");
+        feedback.setStatus(status);
+        feedback.setReply(reply);
         feedback = feedbackRepository.save(feedback);
-        if (feedback.getReply() != null && !feedback.getReply().trim().isEmpty() && !feedback.getReply().equals(previousReply)) {
+        if (!reply.isEmpty() && !reply.equals(previousReply == null ? "" : previousReply.trim())) {
             SystemNotice notice = new SystemNotice();
             notice.setUserId(feedback.getUserId());
             notice.setTitle("意见反馈已回复");
-            notice.setContent(feedback.getReply());
+            notice.setContent("反馈处理回复：" + reply);
             notice.setNoticeType("feedback_reply");
             systemNoticeRepository.save(notice);
         }

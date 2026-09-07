@@ -58,7 +58,7 @@
 
   async function renderDashboard() {
     const data = await request('/dashboard');
-    const metrics = [['用户', data.userCount], ['咨询', data.consultationCount], ['合同', data.contractCount], ['待处理咨询', data.pendingConsultations], ['待审核合同', data.pendingContracts], ['模板', data.templateCount]];
+    const metrics = [['用户', data.userCount], ['咨询', data.consultationCount], ['合同', data.contractCount], ['待处理咨询', data.pendingConsultations], ['待审核合同', data.pendingContracts], ['待处理反馈', data.pendingFeedbacks], ['模板', data.templateCount]];
     area.innerHTML = `<h2>概览</h2><div class="metrics">${metrics.map(([name, value]) => `<div class="metric"><span>${name}</span><strong>${value || 0}</strong></div>`).join('')}</div>`;
   }
 

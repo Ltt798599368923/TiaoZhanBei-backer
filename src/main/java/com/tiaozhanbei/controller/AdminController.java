@@ -38,6 +38,7 @@ public class AdminController {
     @Autowired private DocumentTemplateRepository documentTemplateRepository;
     @Autowired private FavoriteRepository favoriteRepository;
     @Autowired private SystemNoticeRepository systemNoticeRepository;
+    @Autowired private FeedbackRepository feedbackRepository;
     @Autowired private FileStorageService fileStorageService;
     @Autowired private ConsultationService consultationService;
     @Autowired private ConsultationChatHub consultationChatHub;
@@ -84,6 +85,7 @@ public class AdminController {
         data.put("favoriteCount", favoriteRepository.countByIsDeletedFalse());
         data.put("pendingConsultations", consultationRepository.countByStatusAndIsDeletedFalse("pending"));
         data.put("pendingContracts", contractRepository.countByStatusAndIsDeletedFalse("pending"));
+        data.put("pendingFeedbacks", feedbackRepository.countByStatusAndIsDeletedFalse("pending"));
         return ApiResponse.success(data);
     }
 
