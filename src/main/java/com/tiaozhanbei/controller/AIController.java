@@ -8,10 +8,14 @@ import com.tiaozhanbei.service.DeepSeekService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import javax.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -29,6 +33,16 @@ public class AIController {
     public ChatResponse chat(@RequestBody ChatRequest request) {
         logger.info("Received chat request: {}", request.getMessage());
         return deepSeekService.chat(request);
+    }
+
+    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chatStream(@RequestBody ChatRequest request, HttpServletResponse response) {
+        logger.info("Received streaming chat request: {}", request.getMessage());
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
+        SseEmitter emitter = new SseEmitter(0L);
+        CompletableFuture.runAsync(() -> deepSeekService.streamChat(request, emitter));
+        return emitter;
     }
 
     @PostMapping("/law/search")
