@@ -1,5 +1,5 @@
 (() => {
-  const state = { token: '', tab: 'dashboard', content: null, lawyer: null, consultation: null, consultations: [], consultationMessages: [] };
+  const state = { token: '', tab: 'dashboard', content: null, lawyer: null, template: null, consultation: null, consultations: [], consultationMessages: [] };
   let consultationSocket = null;
   const shell = document.querySelector('#app-shell');
   const loginShell = document.querySelector('#login-shell');
@@ -40,6 +40,18 @@
   const showError = error => alert(error.message || '操作失败，请稍后重试');
   const formatTime = value => value ? String(value).replace('T', ' ').slice(0, 16) : '-';
   const status = value => `<span class="status ${value !== 'pending' ? 'done' : ''}">${escapeHtml(value || 'pending')}</span>`;
+  const templateCategoryLabels = {
+    complaint: '起诉状 / 自诉状', defense: '答辩状', appeal: '上诉状', application: '申请书 / 申诉书',
+    authorization: '授权委托', preservation: '保全措施', execution: '执行程序', statement: '意见 / 陈述', other: '其他文书',
+    civil: '民事类（旧分类）', criminal: '刑事类（旧分类）', contract: '合同类（旧分类）',
+    administrative: '行政类（旧分类）', company: '公司类（旧分类）'
+  };
+  const templatePracticeLabels = {
+    civil_commercial: '民商事', criminal: '刑事', administrative: '行政', intellectual_property: '知识产权',
+    state_compensation: '国家赔偿', enforcement: '执行', maritime: '海事', environmental: '环境资源', other: '其他领域'
+  };
+  const templateMaterialLabels = { template: '空白模板', example: '填写实例', guide: '填写说明' };
+  const templateLabel = (labels, value) => labels[value] || value || '未分类';
   async function render() {
     document.querySelectorAll('.sidebar button').forEach(button => button.classList.toggle('active', button.dataset.tab === state.tab));
     try {
@@ -185,7 +197,32 @@
 
   async function renderTemplates() {
     const list = await request('/templates');
-    area.innerHTML = `<div class="toolbar"><h2>文书模板</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div><div class="panel import-panel"><h3>导入模板审核清单</h3><p>仅导入已整理的无实例模板正文。导入后可在小程序内阅读和复制，再按需要补传 Word 附件。</p><div class="import-actions"><input id="template-library-file" type="file" accept="application/json,.json"><button type="button" onclick="adminApp.importTemplateLibrary()">导入模板清单</button></div></div><div class="panel"><h3>新增模板</h3><form id="template-form"><div class="form-grid"><label>标题<input name="title" required></label><label>分类<input name="category" required placeholder="civil / contract 等"></label><label class="full">说明<textarea name="description"></textarea></label><label class="full">正文（可选）<textarea name="content"></textarea></label><label class="full">模板文件（可选）<input name="file" type="file" accept=".pdf,.doc,.docx,.txt"></label></div><div class="form-actions"><button type="submit">保存模板</button></div></form></div>${table(list, ['标题', '分类', '附件', '使用次数', '操作'], item => `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.category || '-')}</td><td>${item.fileName ? escapeHtml(item.fileName) : '无'}</td><td>${item.downloadCount || 0}</td><td><button class="danger" onclick="adminApp.deleteTemplate(${item.id})">删除</button></td></tr>`)}`;
+    const item = state.template;
+    const optionList = (choices, selected) => choices.map(([value, label]) => `<option value="${value}" ${selected === value ? 'selected' : ''}>${label}</option>`).join('');
+    const categories = [
+      ['complaint', '起诉状 / 自诉状'], ['defense', '答辩状'], ['appeal', '上诉状'], ['application', '申请书 / 申诉书'],
+      ['authorization', '授权委托'], ['preservation', '保全措施'], ['execution', '执行程序'], ['statement', '意见 / 陈述'], ['other', '其他文书']
+    ];
+    const practiceAreas = [
+      ['civil_commercial', '民商事'], ['criminal', '刑事'], ['administrative', '行政'], ['intellectual_property', '知识产权'],
+      ['state_compensation', '国家赔偿'], ['enforcement', '执行'], ['maritime', '海事'], ['environmental', '环境资源'], ['other', '其他领域']
+    ];
+    const materialTypes = [['template', '空白模板'], ['example', '填写实例'], ['guide', '填写说明']];
+    const selectedCategory = categories.some(([value]) => value === item?.category) ? item.category : 'other';
+    const selectedPracticeArea = practiceAreas.some(([value]) => value === item?.practiceArea) ? item.practiceArea : 'other';
+    const selectedMaterialType = materialTypes.some(([value]) => value === item?.materialType) ? item.materialType : 'template';
+    area.innerHTML = `<div class="toolbar"><h2>文书模板</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>
+      <div class="panel import-panel"><h3>导入模板审核清单</h3><p>审核后可导入模板、实例或填写说明。实例发布前务必完成当事人信息脱敏；导入的内容将直接作为小程序在线阅读正文。</p><div class="import-actions"><input id="template-library-file" type="file" accept="application/json,.json"><button type="button" onclick="adminApp.importTemplateLibrary()">导入审核清单</button></div></div>
+      <div class="panel"><h3>${item ? '编辑文书' : '发布文书'}</h3><form id="template-form"><div class="form-grid">
+        <label>文书标题<input name="title" required value="${escapeHtml(item?.title || '')}" placeholder="例如：买卖合同纠纷起诉状"></label>
+        <label>文书类型<select name="category" required>${optionList(categories, selectedCategory)}</select></label>
+        <label>业务领域<select name="practiceArea" required>${optionList(practiceAreas, selectedPracticeArea)}</select></label>
+        <label>资料形态<select name="materialType" required>${optionList(materialTypes, selectedMaterialType)}</select><span class="field-hint">实例仅供参考，发布前请完成脱敏。</span></label>
+        <label class="full">使用说明<textarea name="description" placeholder="说明适用场景、填写要点或注意事项">${escapeHtml(item?.description || '')}</textarea></label>
+        <label class="full">在线阅读正文（推荐）<textarea name="content" placeholder="填写后，用户可直接在小程序中阅读和复制；仅上传原件时，用户将通过文档查看器打开。">${escapeHtml(item?.content || '')}</textarea></label>
+        <label class="full">Word / PDF 原件${item?.fileName ? `（当前：${escapeHtml(item.fileName)}）` : ''}<input name="file" type="file" accept=".pdf,.doc,.docx,.txt"><span class="field-hint">在线正文与原件至少提供一种；上传新文件会替换当前原件。</span></label>
+      </div><div class="form-actions"><button type="submit">${item ? '保存修改' : '发布文书'}</button>${item ? '<button type="button" class="secondary" onclick="adminApp.cancelTemplateEdit()">取消</button>' : ''}</div></form></div>
+      ${table(list, ['文书', '分类', '阅读方式', '原件', '使用次数', '操作'], entry => `<tr><td><strong>${escapeHtml(entry.title)}</strong><div class="muted">${escapeHtml(entry.description || '')}</div></td><td><div class="template-badges"><span>${escapeHtml(templateLabel(templateCategoryLabels, entry.category))}</span><span>${escapeHtml(templateLabel(templatePracticeLabels, entry.practiceArea))}</span><span>${escapeHtml(templateLabel(templateMaterialLabels, entry.materialType))}</span></div></td><td>${entry.content ? '可在线阅读' : '仅原件查看'}</td><td>${entry.fileName ? escapeHtml(entry.fileName) : '无'}</td><td>${entry.downloadCount || 0}</td><td><div class="row-actions"><button class="secondary" onclick="adminApp.editTemplate(${entry.id})">编辑</button><button class="danger" onclick="adminApp.deleteTemplate(${entry.id})">删除</button></div></td></tr>`)}`;
     document.querySelector('#template-form').onsubmit = event => { event.preventDefault(); saveTemplate(new FormData(event.currentTarget)); };
   }
 
@@ -240,7 +277,24 @@
       render();
     } catch (error) { showError(error); }
   };
-  const saveTemplate = async formData => { try { const file = formData.get('file'); if (file && file.size) { const response = await fetch('/api/admin/templates/upload', { method: 'POST', headers: { 'X-Admin-Token': state.token }, body: formData }); const body = await response.json(); if (!response.ok || body.code !== 200) throw new Error(body.message || '上传失败'); } else { const data = jsonForm(formData); delete data.file; await request('/templates', { method: 'POST', body: JSON.stringify(data) }); } render(); } catch (error) { showError(error); } };
+  const saveTemplate = async formData => {
+    try {
+      const file = formData.get('file');
+      if (file && file.size) {
+        if (state.template) formData.append('id', state.template.id);
+        const response = await fetch('/api/admin/templates/upload', { method: 'POST', headers: { 'X-Admin-Token': state.token }, body: formData });
+        const body = await response.json();
+        if (!response.ok || body.code !== 200) throw new Error(body.message || '上传失败');
+      } else {
+        const data = jsonForm(formData);
+        delete data.file;
+        if (state.template) await request(`/templates/${state.template.id}`, { method: 'PUT', body: JSON.stringify(data) });
+        else await request('/templates', { method: 'POST', body: JSON.stringify(data) });
+      }
+      state.template = null;
+      render();
+    } catch (error) { showError(error); }
+  };
   const saveNotice = async formData => { try { await request('/notices', { method: 'POST', body: JSON.stringify(jsonForm(formData)) }); render(); } catch (error) { showError(error); } };
   const importManifest = async (inputId, path, label) => {
     const file = document.querySelector(`#${inputId}`)?.files?.[0];
@@ -261,15 +315,17 @@
 
   window.adminApp = {
     refresh: render,
-    changeTab: tab => { if (consultationSocket) consultationSocket.close(); consultationSocket = null; state.tab = tab; state.content = null; state.lawyer = null; state.consultation = null; render(); },
+    changeTab: tab => { if (consultationSocket) consultationSocket.close(); consultationSocket = null; state.tab = tab; state.content = null; state.lawyer = null; state.template = null; state.consultation = null; render(); },
     changeContentType: type => { state.contentType = type; state.content = null; render(); },
     updateContentForm: type => updateContentForm(type),
     cancelContentEdit: () => { state.content = null; render(); },
     cancelLawyerEdit: () => { state.lawyer = null; render(); },
+    cancelTemplateEdit: () => { state.template = null; render(); },
     importLegalLibrary: () => importManifest('legal-library-file', '/content/import', '法规审核清单导入'),
     importTemplateLibrary: () => importManifest('template-library-file', '/templates/import', '模板审核清单导入'),
     editContent: async id => { try { state.content = await request(`/content/${id}`); render(); } catch (error) { showError(error); } },
     editLawyer: async id => { try { state.lawyer = await request(`/lawyers/${id}`); render(); } catch (error) { showError(error); } },
+    editTemplate: async id => { try { const list = await request('/templates'); state.template = list.find(item => Number(item.id) === Number(id)) || null; if (!state.template) throw new Error('模板不存在'); render(); } catch (error) { showError(error); } },
     openConsultation: (id, isBooking = false, status = 'pending') => { const item = state.consultations.find(entry => Number(entry.id) === Number(id)); state.consultation = item ? { ...item, isBooking: Boolean(item.lawyerId) } : { id, isBooking, status }; render(); },
     closeConsultation: () => { if (consultationSocket) consultationSocket.close(); consultationSocket = null; state.consultation = null; state.consultationMessages = []; render(); },
     refreshConsultation: () => renderConsultationChat().catch(showError),

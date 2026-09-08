@@ -23,6 +23,8 @@ public class TemplateImportRequest {
         private String title;
         private String description;
         private String category;
+        private String practiceArea;
+        private String materialType;
         private String content;
 
         public String getImportKey() {
@@ -55,6 +57,22 @@ public class TemplateImportRequest {
 
         public void setCategory(String category) {
             this.category = category;
+        }
+
+        public String getPracticeArea() {
+            return practiceArea;
+        }
+
+        public void setPracticeArea(String practiceArea) {
+            this.practiceArea = practiceArea;
+        }
+
+        public String getMaterialType() {
+            return materialType;
+        }
+
+        public void setMaterialType(String materialType) {
+            this.materialType = materialType;
         }
 
         public String getContent() {

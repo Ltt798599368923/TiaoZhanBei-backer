@@ -95,10 +95,12 @@ CREATE TABLE IF NOT EXISTS t_content_item (
 -- =============================================
 CREATE TABLE IF NOT EXISTS t_document_template (
     id BIGSERIAL PRIMARY KEY,
-    title VARCHAR(200) NOT NULL,
-    description VARCHAR(500),
-    category VARCHAR(100),
-    content TEXT,
+      title VARCHAR(200) NOT NULL,
+      description VARCHAR(500),
+      category VARCHAR(100),
+      practice_area VARCHAR(100),
+      material_type VARCHAR(50) DEFAULT 'template',
+      content TEXT,
     file_path VARCHAR(500),
     file_name VARCHAR(500),
     import_key VARCHAR(200),
@@ -113,7 +115,8 @@ CREATE TABLE IF NOT EXISTS t_document_template (
 CREATE INDEX IF NOT EXISTS idx_favorite_user_id ON t_favorite(user_id);
 CREATE INDEX IF NOT EXISTS idx_consultation_user_id ON t_consultation(user_id);
 CREATE INDEX IF NOT EXISTS idx_contract_user_id ON t_contract(user_id);
-CREATE INDEX IF NOT EXISTS idx_template_category ON t_document_template(category);
+  CREATE INDEX IF NOT EXISTS idx_template_category ON t_document_template(category);
+  CREATE INDEX IF NOT EXISTS idx_template_practice_area ON t_document_template(practice_area);
 CREATE INDEX IF NOT EXISTS idx_content_type_published ON t_content_item(content_type, is_published);
 CREATE INDEX IF NOT EXISTS idx_content_import_key ON t_content_item(import_key);
 CREATE INDEX IF NOT EXISTS idx_template_import_key ON t_document_template(import_key);

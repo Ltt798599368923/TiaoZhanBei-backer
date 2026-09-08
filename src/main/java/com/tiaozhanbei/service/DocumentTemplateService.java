@@ -35,6 +35,9 @@ public class DocumentTemplateService {
             map.put("title", template.getTitle());
             map.put("description", template.getDescription());
             map.put("category", template.getCategory());
+            map.put("practiceArea", template.getPracticeArea());
+            map.put("materialType", template.getMaterialType());
+            map.put("hasContent", template.getContent() != null && !template.getContent().trim().isEmpty());
             map.put("hasFile", template.getFilePath() != null && !template.getFilePath().trim().isEmpty());
             map.put("downloadCount", template.getDownloadCount());
             map.put("time", template.getCreatedTime().format(DATE_FORMATTER));
@@ -52,6 +55,9 @@ public class DocumentTemplateService {
             map.put("title", template.getTitle());
             map.put("description", template.getDescription());
             map.put("category", template.getCategory());
+            map.put("practiceArea", template.getPracticeArea());
+            map.put("materialType", template.getMaterialType());
+            map.put("hasContent", template.getContent() != null && !template.getContent().trim().isEmpty());
             map.put("hasFile", template.getFilePath() != null && !template.getFilePath().trim().isEmpty());
             map.put("downloadCount", template.getDownloadCount());
             map.put("time", template.getCreatedTime().format(DATE_FORMATTER));

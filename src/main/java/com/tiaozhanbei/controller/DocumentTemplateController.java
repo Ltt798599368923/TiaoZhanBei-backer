@@ -65,7 +65,10 @@ public class DocumentTemplateController {
             result.put("title", template.getTitle());
             result.put("description", template.getDescription());
             result.put("category", template.getCategory());
+            result.put("practiceArea", template.getPracticeArea());
+            result.put("materialType", template.getMaterialType());
             result.put("content", template.getContent());
+            result.put("hasContent", template.getContent() != null && !template.getContent().trim().isEmpty());
             result.put("fileName", template.getFileName());
             result.put("hasFile", template.getFilePath() != null && !template.getFilePath().trim().isEmpty());
             result.put("downloadCount", template.getDownloadCount());

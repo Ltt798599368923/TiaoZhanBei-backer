@@ -28,6 +28,17 @@ import java.util.*;
 @RequestMapping("/api/admin")
 public class AdminController {
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
+    private static final Set<String> TEMPLATE_CATEGORIES = new HashSet<>(Arrays.asList(
+            "complaint", "defense", "appeal", "application", "authorization",
+            "preservation", "execution", "statement", "other"
+    ));
+    private static final Set<String> TEMPLATE_PRACTICE_AREAS = new HashSet<>(Arrays.asList(
+            "civil_commercial", "criminal", "administrative", "intellectual_property",
+            "state_compensation", "enforcement", "maritime", "environmental", "other"
+    ));
+    private static final Set<String> TEMPLATE_MATERIAL_TYPES = new HashSet<>(Arrays.asList(
+            "template", "example", "guide"
+    ));
 
     @Value("${admin.token:}")
     private String adminToken;
@@ -326,30 +337,44 @@ public class AdminController {
         template.setIsDeleted(false);
         template.setCreatedTime(LocalDateTime.now());
         if (template.getDownloadCount() == null) template.setDownloadCount(0);
+        applyTemplateFields(template, template);
+        String error = validateTemplate(template);
+        if (error != null) return ApiResponse.error(error);
         return ApiResponse.success("创建成功", documentTemplateRepository.save(template));
     }
 
     @PostMapping(value = "/templates/upload", consumes = "multipart/form-data")
     public ApiResponse<DocumentTemplate> uploadTemplate(
             @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @RequestParam(value = "id", required = false) Long id,
             @RequestParam String title,
             @RequestParam String category,
+            @RequestParam(required = false) String practiceArea,
+            @RequestParam(required = false) String materialType,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) String content,
             @RequestParam("file") MultipartFile file) {
         if (!checkAuth(token)) return authError();
-        if (title.trim().isEmpty() || category.trim().isEmpty()) return ApiResponse.error("标题和分类不能为空");
+        if (file == null || file.isEmpty()) return ApiResponse.error("请先选择 Word、PDF 或 TXT 原件");
         try {
-            DocumentTemplate template = new DocumentTemplate();
-            template.setTitle(title.trim());
-            template.setCategory(category.trim());
-            template.setDescription(description);
-            template.setContent(content);
+            DocumentTemplate template = id == null ? new DocumentTemplate()
+                    : documentTemplateRepository.findById(id).orElse(null);
+            if (template == null) return ApiResponse.error("模板不存在");
+            DocumentTemplate body = new DocumentTemplate();
+            body.setTitle(title);
+            body.setCategory(category);
+            body.setPracticeArea(practiceArea);
+            body.setMaterialType(materialType);
+            body.setDescription(description);
+            body.setContent(content);
+            applyTemplateFields(template, body);
+            String error = validateTemplate(template, true);
+            if (error != null) return ApiResponse.error(error);
             template.setFileName(file.getOriginalFilename());
             template.setFilePath(fileStorageService.store(file, "templates"));
-            template.setDownloadCount(0);
+            if (template.getDownloadCount() == null) template.setDownloadCount(0);
             template.setIsDeleted(false);
-            return ApiResponse.success("上传成功", documentTemplateRepository.save(template));
+            return ApiResponse.success(id == null ? "上传成功" : "更新成功", documentTemplateRepository.save(template));
         } catch (Exception e) {
             logger.error("Upload template failed", e);
             return ApiResponse.error("模板上传失败: " + e.getMessage());
@@ -364,16 +389,11 @@ public class AdminController {
         if (request == null || request.getItems().isEmpty()) return ApiResponse.error("导入清单不能为空");
         if (request.getItems().size() > 100) return ApiResponse.error("单次最多导入 100 个模板");
 
-        Set<String> categories = new HashSet<>(Arrays.asList(
-                "civil", "criminal", "contract", "administrative", "company", "other"
-        ));
         int created = 0;
         int updated = 0;
         List<String> rejected = new ArrayList<>();
         for (TemplateImportRequest.Item body : request.getItems()) {
-            if (body == null || isBlank(body.getImportKey()) || isBlank(body.getTitle())
-                    || isBlank(body.getCategory()) || isBlank(body.getContent())
-                    || !categories.contains(body.getCategory().trim())) {
+            if (body == null || isBlank(body.getImportKey()) || isBlank(body.getTitle()) || isBlank(body.getContent())) {
                 rejected.add(body == null || isBlank(body.getTitle()) ? "未命名模板" : body.getTitle());
                 continue;
             }
@@ -392,8 +412,15 @@ public class AdminController {
             template.setIsDeleted(false);
             template.setTitle(body.getTitle().trim());
             template.setDescription(trimToLength(body.getDescription(), 500));
-            template.setCategory(body.getCategory().trim());
+            template.setCategory(normalizeTemplateCategory(body.getCategory(), body.getTitle()));
+            template.setPracticeArea(normalizePracticeArea(body.getPracticeArea(), body.getCategory()));
+            template.setMaterialType(normalizeMaterialType(body.getMaterialType()));
             template.setContent(body.getContent().trim());
+            String error = validateTemplate(template);
+            if (error != null) {
+                rejected.add(body.getTitle());
+                continue;
+            }
             documentTemplateRepository.save(template);
             if (isNew) {
                 created++;
@@ -416,12 +443,9 @@ public class AdminController {
         if (!checkAuth(token)) return authError();
         DocumentTemplate t = documentTemplateRepository.findById(id).orElse(null);
         if (t == null) return ApiResponse.error("模板不存在");
-        if (body.getTitle() != null) t.setTitle(body.getTitle());
-        if (body.getDescription() != null) t.setDescription(body.getDescription());
-        if (body.getCategory() != null) t.setCategory(body.getCategory());
-        if (body.getContent() != null) t.setContent(body.getContent());
-        if (body.getFilePath() != null) t.setFilePath(body.getFilePath());
-        if (body.getFileName() != null) t.setFileName(body.getFileName());
+        applyTemplateFields(t, body);
+        String error = validateTemplate(t);
+        if (error != null) return ApiResponse.error(error);
         return ApiResponse.success("更新成功", documentTemplateRepository.save(t));
     }
 
@@ -445,6 +469,79 @@ public class AdminController {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
+    }
+
+    private void applyTemplateFields(DocumentTemplate target, DocumentTemplate body) {
+        if (body.getTitle() != null) target.setTitle(trimToLength(body.getTitle(), 200));
+        if (body.getDescription() != null) target.setDescription(trimToLength(body.getDescription(), 500));
+        if (body.getCategory() != null) {
+            target.setCategory(normalizeTemplateCategory(body.getCategory(), target.getTitle()));
+        }
+        if (body.getPracticeArea() != null) {
+            target.setPracticeArea(normalizePracticeArea(body.getPracticeArea(), target.getCategory()));
+        } else if (target.getPracticeArea() == null) {
+            target.setPracticeArea("other");
+        }
+        if (body.getMaterialType() != null) {
+            target.setMaterialType(normalizeMaterialType(body.getMaterialType()));
+        } else if (target.getMaterialType() == null) {
+            target.setMaterialType("template");
+        }
+        if (body.getContent() != null) {
+            String content = body.getContent().trim();
+            target.setContent(content.isEmpty() ? null : content);
+        }
+    }
+
+    private String validateTemplate(DocumentTemplate template) {
+        return validateTemplate(template, false);
+    }
+
+    private String validateTemplate(DocumentTemplate template, boolean hasUploadedFile) {
+        if (isBlank(template.getTitle())) return "标题不能为空";
+        if (!TEMPLATE_CATEGORIES.contains(template.getCategory())) return "请选择有效的文书类型";
+        if (!TEMPLATE_PRACTICE_AREAS.contains(template.getPracticeArea())) return "请选择有效的业务领域";
+        if (!TEMPLATE_MATERIAL_TYPES.contains(template.getMaterialType())) return "请选择有效的资料形态";
+        boolean hasContent = !isBlank(template.getContent());
+        boolean hasFile = hasUploadedFile || !isBlank(template.getFilePath());
+        return hasContent || hasFile ? null : "请填写在线阅读正文，或上传 Word、PDF、TXT 原件";
+    }
+
+    private String normalizeTemplateCategory(String value, String title) {
+        String category = value == null ? "" : value.trim();
+        if (TEMPLATE_CATEGORIES.contains(category)) return category;
+        String text = (title == null ? "" : title) + category;
+        if (text.contains("答辩")) return "defense";
+        if (text.contains("上诉")) return "appeal";
+        if (text.contains("委托")) return "authorization";
+        if (text.contains("保全")) return "preservation";
+        if (text.contains("执行")) return "execution";
+        if (text.contains("起诉") || text.contains("自诉") || text.contains("反诉")) return "complaint";
+        if (text.contains("申请") || text.contains("申诉") || text.contains("复议")) return "application";
+        if (text.contains("意见") || text.contains("陈述")) return "statement";
+        return "other";
+    }
+
+    private String normalizePracticeArea(String value, String legacyCategory) {
+        String practiceArea = value == null ? "" : value.trim();
+        if (TEMPLATE_PRACTICE_AREAS.contains(practiceArea)) return practiceArea;
+        String text = practiceArea + (legacyCategory == null ? "" : legacyCategory);
+        if (text.contains("criminal") || text.contains("刑事")) return "criminal";
+        if (text.contains("administrative") || text.contains("行政")) return "administrative";
+        if (text.contains("intellectual") || text.contains("知识产权")) return "intellectual_property";
+        if (text.contains("compensation") || text.contains("赔偿")) return "state_compensation";
+        if (text.contains("enforcement") || text.contains("执行")) return "enforcement";
+        if (text.contains("maritime") || text.contains("海事")) return "maritime";
+        if (text.contains("environment") || text.contains("环境")) return "environmental";
+        if (text.contains("civil") || text.contains("contract") || text.contains("company") || text.contains("民商")) {
+            return "civil_commercial";
+        }
+        return "other";
+    }
+
+    private String normalizeMaterialType(String value) {
+        String materialType = value == null ? "" : value.trim();
+        return TEMPLATE_MATERIAL_TYPES.contains(materialType) ? materialType : "template";
     }
 
     // ==================== 系统通知 ====================

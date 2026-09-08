@@ -19,6 +19,12 @@ public class DocumentTemplate {
     @Column(length = 100)
     private String category;
 
+    @Column(name = "practice_area", length = 100)
+    private String practiceArea;
+
+    @Column(name = "material_type", length = 50)
+    private String materialType = "template";
+
     @Column(columnDefinition = "TEXT")
     private String content;
 
@@ -75,6 +81,22 @@ public class DocumentTemplate {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public String getPracticeArea() {
+        return practiceArea;
+    }
+
+    public void setPracticeArea(String practiceArea) {
+        this.practiceArea = practiceArea;
+    }
+
+    public String getMaterialType() {
+        return materialType;
+    }
+
+    public void setMaterialType(String materialType) {
+        this.materialType = materialType;
     }
 
     public String getContent() {
