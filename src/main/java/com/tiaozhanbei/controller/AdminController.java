@@ -2,6 +2,7 @@ package com.tiaozhanbei.controller;
 
 import com.tiaozhanbei.dto.ApiResponse;
 import com.tiaozhanbei.dto.BookingUpdateRequest;
+import com.tiaozhanbei.dto.TemplateImportRequest;
 import com.tiaozhanbei.entity.*;
 import com.tiaozhanbei.repository.*;
 import com.tiaozhanbei.service.FileStorageService;
@@ -355,6 +356,59 @@ public class AdminController {
         }
     }
 
+    @PostMapping("/templates/import")
+    public ApiResponse<Map<String, Object>> importTemplates(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @RequestBody TemplateImportRequest request) {
+        if (!checkAuth(token)) return authError();
+        if (request == null || request.getItems().isEmpty()) return ApiResponse.error("导入清单不能为空");
+        if (request.getItems().size() > 100) return ApiResponse.error("单次最多导入 100 个模板");
+
+        Set<String> categories = new HashSet<>(Arrays.asList(
+                "civil", "criminal", "contract", "administrative", "company", "other"
+        ));
+        int created = 0;
+        int updated = 0;
+        List<String> rejected = new ArrayList<>();
+        for (TemplateImportRequest.Item body : request.getItems()) {
+            if (body == null || isBlank(body.getImportKey()) || isBlank(body.getTitle())
+                    || isBlank(body.getCategory()) || isBlank(body.getContent())
+                    || !categories.contains(body.getCategory().trim())) {
+                rejected.add(body == null || isBlank(body.getTitle()) ? "未命名模板" : body.getTitle());
+                continue;
+            }
+
+            DocumentTemplate template = documentTemplateRepository
+                    .findFirstByImportKey(body.getImportKey().trim())
+                    .orElse(null);
+            boolean isNew = template == null;
+            if (isNew) {
+                template = new DocumentTemplate();
+                template.setImportKey(body.getImportKey().trim());
+                template.setCreatedTime(LocalDateTime.now());
+                template.setDownloadCount(0);
+            }
+
+            template.setIsDeleted(false);
+            template.setTitle(body.getTitle().trim());
+            template.setDescription(trimToLength(body.getDescription(), 500));
+            template.setCategory(body.getCategory().trim());
+            template.setContent(body.getContent().trim());
+            documentTemplateRepository.save(template);
+            if (isNew) {
+                created++;
+            } else {
+                updated++;
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("created", created);
+        result.put("updated", updated);
+        result.put("rejected", rejected);
+        return ApiResponse.success("文书模板导入完成", result);
+    }
+
     @PutMapping("/templates/{id}")
     public ApiResponse<DocumentTemplate> updateTemplate(
             @RequestHeader(value = "X-Admin-Token", required = false) String token,
@@ -381,6 +435,16 @@ public class AdminController {
         t.setIsDeleted(true);
         documentTemplateRepository.save(t);
         return ApiResponse.success("删除成功", null);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private String trimToLength(String value, int maxLength) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
     }
 
     // ==================== 系统通知 ====================

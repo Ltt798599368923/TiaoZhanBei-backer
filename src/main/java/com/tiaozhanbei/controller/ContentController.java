@@ -58,7 +58,9 @@ public class ContentController {
 
     @GetMapping("/{type}/{id}/file")
     public ResponseEntity<Resource> downloadFile(@PathVariable String type, @PathVariable Long id) throws Exception {
-        if (!CONTENT_TYPES.contains(type)) return ResponseEntity.notFound().build();
+        // Articles, regulations and videos are always consumed in the mini program.
+        // Only the legal-reading library exposes optional supplementary files.
+        if (!"book".equals(type)) return ResponseEntity.notFound().build();
         ContentItem item = contentItemRepository.findById(id).orElse(null);
         if (item == null || Boolean.TRUE.equals(item.getIsDeleted()) || !Boolean.TRUE.equals(item.getIsPublished())
                 || !type.equals(item.getContentType()) || item.getFilePath() == null || item.getFilePath().trim().isEmpty()) {

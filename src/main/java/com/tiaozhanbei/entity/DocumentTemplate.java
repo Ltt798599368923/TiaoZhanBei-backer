@@ -28,6 +28,9 @@ public class DocumentTemplate {
     @Column(length = 500)
     private String fileName;
 
+    @Column(name = "import_key", length = 200)
+    private String importKey;
+
     @Column(name = "download_count")
     private Integer downloadCount = 0;
 
@@ -96,6 +99,14 @@ public class DocumentTemplate {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
+    }
+
+    public String getImportKey() {
+        return importKey;
+    }
+
+    public void setImportKey(String importKey) {
+        this.importKey = importKey;
     }
 
     public Integer getDownloadCount() {

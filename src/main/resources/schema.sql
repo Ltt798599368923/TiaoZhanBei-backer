@@ -70,7 +70,28 @@ CREATE TABLE IF NOT EXISTS t_contract (
 );
 
 -- =============================================
--- 5. 文书模板表
+-- 5. 内容资料表
+-- =============================================
+CREATE TABLE IF NOT EXISTS t_content_item (
+    id BIGSERIAL PRIMARY KEY,
+    content_type VARCHAR(20) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    summary VARCHAR(1000),
+    content TEXT,
+    source_name VARCHAR(200),
+    source_url VARCHAR(1000),
+    cover_url VARCHAR(1000),
+    file_name VARCHAR(300),
+    file_path VARCHAR(1000),
+    import_key VARCHAR(200),
+    published_time TIMESTAMP,
+    created_time TIMESTAMP,
+    is_published BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+-- =============================================
+-- 6. 文书模板表
 -- =============================================
 CREATE TABLE IF NOT EXISTS t_document_template (
     id BIGSERIAL PRIMARY KEY,
@@ -79,6 +100,8 @@ CREATE TABLE IF NOT EXISTS t_document_template (
     category VARCHAR(100),
     content TEXT,
     file_path VARCHAR(500),
+    file_name VARCHAR(500),
+    import_key VARCHAR(200),
     download_count INTEGER DEFAULT 0,
     created_time TIMESTAMP,
     is_deleted BOOLEAN DEFAULT FALSE
@@ -91,6 +114,9 @@ CREATE INDEX IF NOT EXISTS idx_favorite_user_id ON t_favorite(user_id);
 CREATE INDEX IF NOT EXISTS idx_consultation_user_id ON t_consultation(user_id);
 CREATE INDEX IF NOT EXISTS idx_contract_user_id ON t_contract(user_id);
 CREATE INDEX IF NOT EXISTS idx_template_category ON t_document_template(category);
+CREATE INDEX IF NOT EXISTS idx_content_type_published ON t_content_item(content_type, is_published);
+CREATE INDEX IF NOT EXISTS idx_content_import_key ON t_content_item(import_key);
+CREATE INDEX IF NOT EXISTS idx_template_import_key ON t_document_template(import_key);
 
 -- =============================================
 -- 插入一些测试数据（可选）

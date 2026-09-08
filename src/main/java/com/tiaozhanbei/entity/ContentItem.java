@@ -36,6 +36,9 @@ public class ContentItem {
     @Column(name = "file_name", length = 300)
     private String fileName;
 
+    @Column(name = "import_key", length = 200)
+    private String importKey;
+
     @JsonIgnore
     @Column(name = "file_path", length = 1000)
     private String filePath;
@@ -75,6 +78,8 @@ public class ContentItem {
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getImportKey() { return importKey; }
+    public void setImportKey(String importKey) { this.importKey = importKey; }
     public String getFilePath() { return filePath; }
     public void setFilePath(String filePath) { this.filePath = filePath; }
     public LocalDateTime getPublishedTime() { return publishedTime; }

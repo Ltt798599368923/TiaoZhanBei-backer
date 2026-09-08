@@ -34,6 +34,11 @@ button.danger { background: #fff1f0; color: #c0190e; border: 1px solid #ffccc7; 
 .toolbar { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .toolbar > div { display: flex; gap: 8px; align-items: center; }
 .panel { margin-bottom: 20px; padding: 20px; background: #fff; border: 1px solid #e7e8ea; border-radius: 8px; }
+.content-guide { margin-bottom: 18px; padding: 11px 13px; color: #7a2b24; background: #fff7f6; border: 1px solid #f1d3d0; border-radius: 6px; font-size: 13px; line-height: 1.6; }
+.import-panel { border-left: 4px solid #c0190e; }
+.import-panel p { margin-bottom: 14px; font-size: 13px; }
+.import-actions { display: flex; align-items: center; gap: 10px; }
+.import-actions input { max-width: 420px; padding: 8px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .form-grid .full { grid-column: 1 / -1; }
 .form-actions { display: flex; gap: 8px; margin-top: 16px; }

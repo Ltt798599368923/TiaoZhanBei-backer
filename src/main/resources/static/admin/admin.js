@@ -112,15 +112,65 @@
     area.innerHTML = `<div class="toolbar"><h2>合同审核</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div>${table(list, ['合同', '用户', '提交时间', '状态', '审核'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.fileName || '无附件')}</div></td><td>${item.userId}</td><td>${formatTime(item.createdTime)}</td><td>${status(item.status)}</td><td><div class="row-actions">${item.fileName ? `<button class="secondary" onclick="adminApp.downloadContract(${item.id})">下载原件</button>` : ''}</div><select id="contract-status-${item.id}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>待审核</option><option value="processing" ${item.status === 'processing' ? 'selected' : ''}>审核中</option><option value="reviewed" ${item.status === 'reviewed' ? 'selected' : ''}>已完成</option><option value="rejected" ${item.status === 'rejected' ? 'selected' : ''}>需补充</option></select><textarea id="contract-review-${item.id}" placeholder="填写真实审核结论">${escapeHtml(item.reviewResult || '')}</textarea><button onclick="adminApp.saveContract(${item.id})">保存审核结果</button></td></tr>`)}`;
   }
 
-  const contentForm = item => `<div class="panel"><h3>${item ? '编辑内容' : '发布内容'}</h3><form id="content-form"><div class="form-grid"><label>类型<select name="contentType"><option value="article">普法文章</option><option value="law">法规动态</option><option value="book">法规阅读</option><option value="video">视频</option></select></label><label>标题<input name="title" required value="${escapeHtml(item?.title || '')}"></label><label class="full">摘要<textarea name="summary">${escapeHtml(item?.summary || '')}</textarea></label><label class="full">正文<textarea name="content">${escapeHtml(item?.content || '')}</textarea></label><label>来源名称<input name="sourceName" value="${escapeHtml(item?.sourceName || '')}"></label><label>来源链接<input name="sourceUrl" type="url" value="${escapeHtml(item?.sourceUrl || '')}"></label><label>封面链接<input name="coverUrl" type="url" value="${escapeHtml(item?.coverUrl || '')}"></label><label>内容附件<input name="file" type="file" accept=".pdf,.doc,.docx,.txt"><span class="field-hint">书籍可上传 PDF、DOC、DOCX、TXT，最大 10MB${item?.fileName ? `；当前：${escapeHtml(item.fileName)}` : ''}</span></label><label>发布状态<select name="isPublished"><option value="true">发布</option><option value="false">保存为未发布</option></select></label></div><div class="form-actions"><button type="submit">${item ? '保存修改' : '发布内容'}</button>${item ? '<button type="button" class="secondary" onclick="adminApp.cancelContentEdit()">取消</button>' : ''}</div></form></div>`;
+  const contentForm = item => {
+    return `<div class="panel"><h3>${item ? '编辑内容' : '发布内容'}</h3><form id="content-form"><div class="content-guide" id="content-guide"></div><div class="form-grid"><label>类型<select name="contentType" onchange="adminApp.updateContentForm(this.value)"><option value="article">普法文章（法理白话）</option><option value="law">法规动态（法治新程）</option><option value="book">法规阅读（在线阅读）</option><option value="video">视频（小视讲堂）</option></select></label><label>标题<input name="title" required value="${escapeHtml(item?.title || '')}"></label><label class="full">摘要<textarea name="summary" placeholder="列表页展示的简短介绍">${escapeHtml(item?.summary || '')}</textarea></label><label class="full">正文<textarea name="content">${escapeHtml(item?.content || '')}</textarea><span class="field-hint" id="content-body-hint"></span></label><label>来源名称（可选）<input name="sourceName" value="${escapeHtml(item?.sourceName || '')}" placeholder="例如：法视界编辑部"></label><label data-content-field="source-url">来源链接（可选）<input name="sourceUrl" type="url" value="${escapeHtml(item?.sourceUrl || '')}" placeholder="只作为权威来源参考，不影响在线阅读"></label><label>封面链接（可选）<input name="coverUrl" type="url" value="${escapeHtml(item?.coverUrl || '')}"></label><label data-content-field="attachment">法规资料附件（可选）<input name="file" type="file" accept=".pdf,.doc,.docx,.txt"><span class="field-hint">仅法规阅读可上传 PDF、DOC、DOCX、TXT，最大 10MB${item?.fileName ? `；当前：${escapeHtml(item.fileName)}` : ''}</span></label><label>发布状态<select name="isPublished"><option value="true">发布</option><option value="false">保存为未发布</option></select></label></div><div class="form-actions"><button type="submit">${item ? '保存修改' : '发布内容'}</button>${item ? '<button type="button" class="secondary" onclick="adminApp.cancelContentEdit()">取消</button>' : ''}</div></form></div>`;
+  };
+
+  const CONTENT_FORM_GUIDES = {
+    article: {
+      guide: '将发布到小程序「法理白话」。用户点击文章卡片后直接阅读正文，不需要附件或外部链接。',
+      bodyHint: '必填。正文会直接显示在小程序文章详情页。',
+      bodyPlaceholder: '请输入完整的普法文章正文'
+    },
+    law: {
+      guide: '将发布到小程序「法治新程」。用户点击后可直接阅读正文，来源链接仅作为补充参考。',
+      bodyHint: '必填。请填写法规动态的完整说明或解读正文。',
+      bodyPlaceholder: '请输入法规动态正文'
+    },
+    book: {
+      guide: '将发布到小程序「法规阅读」。用户优先在线阅读正文，PDF 或 Word 附件仅作补充资料。',
+      bodyHint: '必填。请填写可直接在线阅读的完整法规正文。',
+      bodyPlaceholder: '请输入法规全文或已审核的正文'
+    },
+    video: {
+      guide: '将发布到小程序「小视讲堂」。请填写可直接播放的视频链接，正文可填写视频简介。',
+      bodyHint: '可选。可填写视频简介、要点或文字稿。',
+      bodyPlaceholder: '请输入视频简介或文字稿'
+    }
+  };
+
+  const updateContentForm = type => {
+    const form = document.querySelector('#content-form');
+    const config = CONTENT_FORM_GUIDES[type] || CONTENT_FORM_GUIDES.article;
+    if (!form) return;
+    const body = form.querySelector('[name="content"]');
+    const sourceUrl = form.querySelector('[name="sourceUrl"]');
+    const sourceUrlField = form.querySelector('[data-content-field="source-url"]');
+    const attachment = form.querySelector('[name="file"]');
+    const attachmentField = form.querySelector('[data-content-field="attachment"]');
+    const guide = document.querySelector('#content-guide');
+    const bodyHint = document.querySelector('#content-body-hint');
+
+    body.required = type !== 'video';
+    body.placeholder = config.bodyPlaceholder;
+    sourceUrl.required = type === 'video';
+    sourceUrlField.hidden = type === 'article';
+    sourceUrl.disabled = type === 'article';
+    attachmentField.hidden = type !== 'book';
+    attachment.disabled = type !== 'book';
+    guide.textContent = config.guide;
+    bodyHint.textContent = config.bodyHint;
+  };
   async function renderContent() {
     const type = state.contentType || 'article';
     const list = await request(`/content?type=${type}`);
-    area.innerHTML = `<div class="toolbar"><h2>内容发布</h2><div><select id="content-type-filter" onchange="adminApp.changeContentType(this.value)"><option value="article">普法文章</option><option value="law">法规动态</option><option value="book">法规阅读</option><option value="video">视频</option></select><button class="secondary" onclick="adminApp.refresh()">刷新</button></div></div>${contentForm(state.content)}${table(list, ['标题', '状态', '更新时间', '操作'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.summary || '')}</div></td><td>${status(item.isPublished ? '已发布' : '未发布')}</td><td>${formatTime(item.publishedTime || item.createdTime)}</td><td><div class="row-actions"><button class="secondary" onclick="adminApp.editContent(${item.id})">编辑</button><button class="danger" onclick="adminApp.deleteContent(${item.id})">删除</button></div></td></tr>`)}`;
+    const importPanel = type === 'book' ? `<div class="panel import-panel"><h3>导入法规审核清单</h3><p>首次导入会保存为未发布。请核对版本、正文和官方来源，再逐条发布。</p><div class="import-actions"><input id="legal-library-file" type="file" accept="application/json,.json"><button type="button" onclick="adminApp.importLegalLibrary()">导入审核清单</button></div></div>` : '';
+    area.innerHTML = `<div class="toolbar"><h2>内容发布</h2><div><select id="content-type-filter" onchange="adminApp.changeContentType(this.value)"><option value="article">普法文章</option><option value="law">法规动态</option><option value="book">法规阅读</option><option value="video">视频</option></select><button class="secondary" onclick="adminApp.refresh()">刷新</button></div></div>${importPanel}${contentForm(state.content)}${table(list, ['标题', '状态', '更新时间', '操作'], item => `<tr><td><strong>${escapeHtml(item.title)}</strong><div class="muted">${escapeHtml(item.summary || '')}</div></td><td>${status(item.isPublished ? '已发布' : '未发布')}</td><td>${formatTime(item.publishedTime || item.createdTime)}</td><td><div class="row-actions"><button class="secondary" onclick="adminApp.editContent(${item.id})">编辑</button><button class="danger" onclick="adminApp.deleteContent(${item.id})">删除</button></div></td></tr>`)}`;
     document.querySelector('#content-type-filter').value = type;
     const form = document.querySelector('#content-form');
     form.contentType.value = state.content?.contentType || type;
     form.isPublished.value = String(state.content?.isPublished ?? true);
+    updateContentForm(form.contentType.value);
     form.onsubmit = event => { event.preventDefault(); saveContent(new FormData(form)); };
   }
 
@@ -135,7 +185,7 @@
 
   async function renderTemplates() {
     const list = await request('/templates');
-    area.innerHTML = `<div class="toolbar"><h2>文书模板</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div><div class="panel"><h3>新增模板</h3><form id="template-form"><div class="form-grid"><label>标题<input name="title" required></label><label>分类<input name="category" required placeholder="civil / contract 等"></label><label class="full">说明<textarea name="description"></textarea></label><label class="full">正文（可选）<textarea name="content"></textarea></label><label class="full">模板文件（可选）<input name="file" type="file" accept=".pdf,.doc,.docx,.txt"></label></div><div class="form-actions"><button type="submit">保存模板</button></div></form></div>${table(list, ['标题', '分类', '附件', '使用次数', '操作'], item => `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.category || '-')}</td><td>${item.fileName ? escapeHtml(item.fileName) : '无'}</td><td>${item.downloadCount || 0}</td><td><button class="danger" onclick="adminApp.deleteTemplate(${item.id})">删除</button></td></tr>`)}`;
+    area.innerHTML = `<div class="toolbar"><h2>文书模板</h2><button class="secondary" onclick="adminApp.refresh()">刷新</button></div><div class="panel import-panel"><h3>导入模板审核清单</h3><p>仅导入已整理的无实例模板正文。导入后可在小程序内阅读和复制，再按需要补传 Word 附件。</p><div class="import-actions"><input id="template-library-file" type="file" accept="application/json,.json"><button type="button" onclick="adminApp.importTemplateLibrary()">导入模板清单</button></div></div><div class="panel"><h3>新增模板</h3><form id="template-form"><div class="form-grid"><label>标题<input name="title" required></label><label>分类<input name="category" required placeholder="civil / contract 等"></label><label class="full">说明<textarea name="description"></textarea></label><label class="full">正文（可选）<textarea name="content"></textarea></label><label class="full">模板文件（可选）<input name="file" type="file" accept=".pdf,.doc,.docx,.txt"></label></div><div class="form-actions"><button type="submit">保存模板</button></div></form></div>${table(list, ['标题', '分类', '附件', '使用次数', '操作'], item => `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.category || '-')}</td><td>${item.fileName ? escapeHtml(item.fileName) : '无'}</td><td>${item.downloadCount || 0}</td><td><button class="danger" onclick="adminApp.deleteTemplate(${item.id})">删除</button></td></tr>`)}`;
     document.querySelector('#template-form').onsubmit = event => { event.preventDefault(); saveTemplate(new FormData(event.currentTarget)); };
   }
 
@@ -192,13 +242,32 @@
   };
   const saveTemplate = async formData => { try { const file = formData.get('file'); if (file && file.size) { const response = await fetch('/api/admin/templates/upload', { method: 'POST', headers: { 'X-Admin-Token': state.token }, body: formData }); const body = await response.json(); if (!response.ok || body.code !== 200) throw new Error(body.message || '上传失败'); } else { const data = jsonForm(formData); delete data.file; await request('/templates', { method: 'POST', body: JSON.stringify(data) }); } render(); } catch (error) { showError(error); } };
   const saveNotice = async formData => { try { await request('/notices', { method: 'POST', body: JSON.stringify(jsonForm(formData)) }); render(); } catch (error) { showError(error); } };
+  const importManifest = async (inputId, path, label) => {
+    const file = document.querySelector(`#${inputId}`)?.files?.[0];
+    if (!file) throw new Error('请先选择 JSON 审核清单');
+    let manifest;
+    try {
+      manifest = JSON.parse(await file.text());
+    } catch (_) {
+      throw new Error('无法读取清单，请选择有效的 JSON 文件');
+    }
+    const items = Array.isArray(manifest) ? manifest : manifest.items;
+    if (!Array.isArray(items) || !items.length) throw new Error('清单中没有可导入的内容');
+    const result = await request(path, { method: 'POST', body: JSON.stringify({ items }) });
+    const rejected = Array.isArray(result.rejected) && result.rejected.length ? `；未导入 ${result.rejected.length} 条` : '';
+    alert(`${label}完成：新增 ${result.created || 0} 条，更新 ${result.updated || 0} 条${rejected}`);
+    render();
+  };
 
   window.adminApp = {
     refresh: render,
     changeTab: tab => { if (consultationSocket) consultationSocket.close(); consultationSocket = null; state.tab = tab; state.content = null; state.lawyer = null; state.consultation = null; render(); },
     changeContentType: type => { state.contentType = type; state.content = null; render(); },
+    updateContentForm: type => updateContentForm(type),
     cancelContentEdit: () => { state.content = null; render(); },
     cancelLawyerEdit: () => { state.lawyer = null; render(); },
+    importLegalLibrary: () => importManifest('legal-library-file', '/content/import', '法规审核清单导入'),
+    importTemplateLibrary: () => importManifest('template-library-file', '/templates/import', '模板审核清单导入'),
     editContent: async id => { try { state.content = await request(`/content/${id}`); render(); } catch (error) { showError(error); } },
     editLawyer: async id => { try { state.lawyer = await request(`/lawyers/${id}`); render(); } catch (error) { showError(error); } },
     openConsultation: (id, isBooking = false, status = 'pending') => { const item = state.consultations.find(entry => Number(entry.id) === Number(id)); state.consultation = item ? { ...item, isBooking: Boolean(item.lawyerId) } : { id, isBooking, status }; render(); },
