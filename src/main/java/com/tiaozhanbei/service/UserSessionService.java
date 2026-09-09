@@ -1,28 +1,39 @@
 package com.tiaozhanbei.service;
 
 import com.tiaozhanbei.entity.User;
+import com.tiaozhanbei.entity.UserSession;
+import com.tiaozhanbei.repository.UserRepository;
+import com.tiaozhanbei.repository.UserSessionRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class UserSessionService {
-    private final Map<String, Session> sessions = new ConcurrentHashMap<>();
     private final long sessionTtlHours;
+    private final UserRepository userRepository;
+    private final UserSessionRepository userSessionRepository;
 
-    public UserSessionService(@Value("${security.user-session-ttl-hours:168}") long sessionTtlHours) {
+    public UserSessionService(@Value("${security.user-session-ttl-hours:168}") long sessionTtlHours,
+                              UserRepository userRepository,
+                              UserSessionRepository userSessionRepository) {
         this.sessionTtlHours = sessionTtlHours;
+        this.userRepository = userRepository;
+        this.userSessionRepository = userSessionRepository;
     }
 
     public String createSession(User user) {
         String token = UUID.randomUUID().toString();
-        sessions.put(token, new Session(user.getId(), Instant.now().plus(sessionTtlHours, ChronoUnit.HOURS)));
+        LocalDateTime now = LocalDateTime.now();
+        UserSession session = new UserSession();
+        session.setToken(token);
+        session.setUserId(user.getId());
+        session.setCreatedTime(now);
+        session.setExpiresAt(now.plusHours(sessionTtlHours));
+        userSessionRepository.save(session);
         return token;
     }
 
@@ -32,24 +43,22 @@ public class UserSessionService {
         }
 
         String token = authorizationHeader.substring("Bearer ".length()).trim();
-        Session session = sessions.get(token);
+        if (token.isEmpty()) {
+            return Optional.empty();
+        }
+        UserSession session = userSessionRepository.findById(token).orElse(null);
         if (session == null) {
             return Optional.empty();
         }
-        if (session.expiresAt.isBefore(Instant.now())) {
-            sessions.remove(token);
+        if (!session.getExpiresAt().isAfter(LocalDateTime.now())) {
+            userSessionRepository.delete(session);
             return Optional.empty();
         }
-        return Optional.of(session.userId);
-    }
-
-    private static class Session {
-        private final Long userId;
-        private final Instant expiresAt;
-
-        private Session(Long userId, Instant expiresAt) {
-            this.userId = userId;
-            this.expiresAt = expiresAt;
+        User user = userRepository.findById(session.getUserId()).orElse(null);
+        if (user == null || Boolean.TRUE.equals(user.getIsDeleted())) {
+            userSessionRepository.delete(session);
+            return Optional.empty();
         }
+        return Optional.of(session.getUserId());
     }
 }
